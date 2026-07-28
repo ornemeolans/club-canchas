@@ -49,7 +49,6 @@ export default function App() {
   const [payError, setPayError] = useState(null);
 
   const [reservation, setReservation] = useState(null);
-  const [reservations, setReservations] = useState([]);
 
   const pollRef = useRef(null);
   const tickRef = useRef(null);
@@ -72,8 +71,6 @@ export default function App() {
         setConfigLoaded(true);
       })
       .catch((err) => setConfigError(err.message));
-
-    api.getReservations().then((r) => setReservations(r.reservations)).catch(() => {});
 
     const match = window.location.pathname.match(/^\/reserva\/([\w-]+)$/);
     if (match) {
@@ -313,38 +310,6 @@ export default function App() {
           </div>
         </section>
       )}
-
-      <section>
-        <h2 className="section-title display">Planilla de turnos</h2>
-        <p className="section-sub">Se actualiza automáticamente al confirmarse cada pago</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Cancha</th>
-              <th>Fecha</th>
-              <th>Horario</th>
-              <th>Cliente</th>
-              <th>Monto</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reservations.length === 0 && (
-              <tr className="empty-row">
-                <td colSpan={5}>Todavía no hay turnos confirmados.</td>
-              </tr>
-            )}
-            {reservations.map((r) => (
-              <tr key={r.id}>
-                <td>{r.courtName}</td>
-                <td className="mono">{r.date}</td>
-                <td className="mono">{String(r.hour).padStart(2, "0")}:00</td>
-                <td>{r.clientName}</td>
-                <td className="mono">${r.amount.toLocaleString("es-AR")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
 
       <footer>Club Canchas</footer>
 

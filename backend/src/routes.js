@@ -151,8 +151,14 @@ router.post("/holds/:id/verify", async (req, res) => {
   }
 });
 
-// Planilla de turnos confirmados.
-router.get("/reservations", (_req, res) => {
+// Planilla de turnos confirmados. Esto es para uso interno del club, no
+// para la página pública — por eso pide una clave simple en el header.
+// (La "planilla" de verdad, para el día a día, es el Google Sheet privado.)
+router.get("/reservations", (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
   res.json({ reservations: listReservations() });
 });
 

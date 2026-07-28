@@ -71,9 +71,24 @@ mientras probás.
    encabezados en la fila 1 (id, deporte, cancha, fecha, horario, cliente,
    teléfono, monto, id de pago, confirmado el), y compartila con el email de
    la cuenta de servicio (está dentro del JSON, campo `client_email`) con
-   permiso de **Editor**.
+   permiso de **Editor**. Esta planilla es privada — no la compartas
+   públicamente ni con "cualquiera con el link"; sólo con esa cuenta de
+   servicio y con quien vos decidas darle acceso desde Drive.
 4. Copiá el ID de la planilla (la parte de la URL entre `/d/` y `/edit`) a
    `GOOGLE_SHEET_ID`.
+
+## Sobre la "planilla" visible en la página
+
+La página pública **no** muestra ningún listado de turnos ni datos de
+clientes — eso quedaría expuesto a cualquiera que entre al sitio. La
+planilla real es el Google Sheet privado del punto anterior, que sólo ve el
+dueño del club (y quien él invite desde Drive).
+
+Además, `GET /api/reservations` (que devuelve el listado completo con
+nombres y teléfonos) está protegido con una clave simple — hay que mandarla
+en el header `x-admin-token` con el valor de `ADMIN_TOKEN` del `.env`. Es
+para que vos puedas consultarlo si alguna vez lo necesitás (por ejemplo con
+`curl`), no para que lo use la página.
 
 ## Dos capas de confirmación (no depende de una sola)
 
