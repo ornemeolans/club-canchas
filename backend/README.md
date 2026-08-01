@@ -56,10 +56,13 @@ mientras probás.
    dura 24hs) y su **Phone number ID** (`WHATSAPP_PHONE_NUMBER_ID`). Ahí
    mismo agregás tu celular como "destinatario de prueba" para poder recibir
    mensajes durante las pruebas.
-3. **Números argentinos**: la API necesita el `9` extra después del `54`
-   (ej. `5493511234567`) — el código ya lo agrega solo si falta
-   (`normalizePhone` en `src/whatsapp.js`), pero tenelo en cuenta si algo no
-   llega y estás probando a mano con `curl`.
+3. **Números argentinos**: no des por sentado si hace falta o no el `9`
+   extra después del `54` — depende de cómo esté registrado ese número en
+   WhatsApp, y varía. Lo importante es que el número que pruebes en el
+   formulario del sitio sea **exactamente igual** (mismo formato, mismos
+   dígitos) al que aparece verificado como "destinatario de prueba" en el
+   panel de Meta — cualquier diferencia hace que rebote con el error
+   `(#131030) Recipient phone number not in allowed list`.
 4. Con `WHATSAPP_TEMPLATE_NAME` vacío, el código manda **texto libre** — que
    sólo entrega si el cliente le escribió al número del club en las últimas
    24hs. Para el caso real (avisarle a alguien que nunca te escribió antes),

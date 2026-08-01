@@ -8,16 +8,17 @@ function digitsOnly(phone) {
   return String(phone).replace(/\D/g, "");
 }
 
-// Los números de celular argentinos necesitan un "9" extra después del
-// código de país (54) para la API de WhatsApp — un detalle particular de
-// Argentina que si se olvida, el mensaje no llega. Si ya viene con el 9 (o
-// no es un número argentino), lo deja como está.
+// Ojo: en algún momento este archivo insertaba automáticamente un "9" extra
+// para números argentinos (una regla que corre para algunas plataformas,
+// pero no siempre para la API de WhatsApp — depende de cómo esté
+// registrado el número). Se sacó porque terminaba armando un número
+// distinto al que realmente está verificado como destinatario de prueba en
+// Meta, y eso rompía el envío. Ahora se manda tal cual lo carga el
+// cliente en el formulario — asegurate de que el número que probás en el
+// sitio sea EXACTAMENTE igual (mismo formato) al que aparece verificado en
+// el panel de Meta como destinatario de prueba.
 function normalizePhone(phone) {
-  const digits = digitsOnly(phone);
-  if (digits.startsWith("54") && digits[2] !== "9") {
-    return `549${digits.slice(2)}`;
-  }
-  return digits;
+  return digitsOnly(phone);
 }
 
 export async function sendWhatsAppConfirmation(reservation) {
