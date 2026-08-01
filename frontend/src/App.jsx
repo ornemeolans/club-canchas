@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { api } from "./api.js";
+import "./styles.css";
 
 function nextDays(n) {
   const out = [];
@@ -290,8 +291,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <AppStyles />
-
       <div className="hero">
         <div className="hero-inner">
           <div className="eyebrow">9:00 — 22:00 · turnos de 1 hora</div>
@@ -502,79 +501,5 @@ export default function App() {
         </div>
       )}
     </div>
-  );
-}
-
-function AppStyles() {
-  return (
-    <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
-      :root{
-        --field:#122A20; --field-deep:#0B1D16; --field-panel:#1B3A2C;
-        --turf:#7FB56A; --turf-soft:#31502F; --clay:#C97A4A; --clay-soft:#5B3A2A;
-        --chalk:#F3EFE2; --chalk-dim:#C8CBB8; --flood:#F4C24C; --danger:#E1583C;
-        --radius:10px;
-      }
-      *{box-sizing:border-box;}
-      .app{ background:var(--field-deep); color:var(--chalk); font-family:'Work Sans', sans-serif; min-height:100vh; padding-bottom:60px; }
-      .display{ font-family:'Teko', sans-serif; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
-      .mono{ font-family:'Space Mono', monospace; }
-      .hero{ padding:56px 24px 40px; background:radial-gradient(ellipse at 20% -10%, rgba(127,181,106,0.18), transparent 55%), var(--field); border-bottom:1px solid rgba(243,239,226,0.08); }
-      .hero-inner{ max-width:960px; margin:0 auto; }
-      .eyebrow{ font-family:'Space Mono', monospace; font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--flood); margin-bottom:10px; }
-      .hero h1{ font-size:clamp(42px, 9vw, 84px); line-height:0.92; margin:0 0 14px; }
-      .hero p{ max-width:520px; color:var(--chalk-dim); font-size:16px; line-height:1.55; margin:0 0 26px; }
-      .btn{ font-family:'Work Sans', sans-serif; font-weight:600; font-size:14px; border:none; border-radius:8px; padding:13px 22px; cursor:pointer; }
-      .btn:disabled{ opacity:0.6; cursor:not-allowed; }
-      .btn-primary{ background:var(--flood); color:#25200a; }
-      .btn-ghost{ background:transparent; color:var(--chalk); border:1px solid rgba(243,239,226,0.35); }
-      .btn-outline{ background:transparent; border:1px solid currentColor; padding:11px 18px; color:var(--chalk); }
-      section{ max-width:960px; margin:0 auto; padding:44px 24px; }
-      .section-title{ font-size:34px; margin:0 0 4px; }
-      .section-sub{ color:var(--chalk-dim); font-size:14px; margin:0 0 26px; }
-      .tabs{ display:flex; gap:10px; margin-bottom:22px; }
-      .tab{ font-family:'Teko', sans-serif; font-size:22px; text-transform:uppercase; padding:9px 20px 6px; border-radius:999px; cursor:pointer; border:1px solid rgba(243,239,226,0.18); color:var(--chalk-dim); background:rgba(255,255,255,0.02); }
-      .tab.active.futbol{ background:var(--turf-soft); color:var(--turf); border-color:var(--turf); }
-      .tab.active.tenis{ background:var(--clay-soft); color:var(--clay); border-color:var(--clay); }
-      .courts{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:30px; }
-      @media(max-width:560px){ .courts{ grid-template-columns:1fr; } }
-      .court-card{ border-radius:var(--radius); padding:16px 18px; cursor:pointer; border:1px solid rgba(243,239,226,0.12); background:var(--field-panel); }
-      .court-card .name{ font-family:'Teko',sans-serif; font-size:24px; }
-      .court-card.selected{ border-color:var(--accent); background:rgba(255,255,255,0.045); }
-      .price-tag{ font-family:'Space Mono',monospace; font-size:12px; color:var(--chalk-dim); margin-top:8px; }
-      .date-strip{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:26px; }
-      .date-pill{ flex:0 0 auto; width:58px; text-align:center; padding:10px 0 8px; border-radius:10px; border:1px solid rgba(243,239,226,0.14); cursor:pointer; background:rgba(255,255,255,0.02); }
-      .date-pill .wd{ font-size:11px; text-transform:uppercase; color:var(--chalk-dim); }
-      .date-pill .d{ font-family:'Teko',sans-serif; font-size:26px; line-height:1; }
-      .date-pill.selected{ border-color:var(--flood); background:rgba(255,255,255,0.05); }
-      .board{ background:var(--field-deep); border:1px solid rgba(243,239,226,0.1); border-radius:12px; padding:18px; }
-      .slot-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px; }
-      .slot{ font-family:'Space Mono', monospace; font-size:14px; padding:12px 0; border-radius:6px; text-align:center; cursor:pointer; border:1px solid rgba(243,239,226,0.14); color:var(--chalk); background:rgba(255,255,255,0.02); }
-      .slot.taken{ color:rgba(243,239,226,0.25); cursor:not-allowed; background:repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 6px, rgba(255,255,255,0.05) 6px 12px); }
-      .hold-overlay{ position:fixed; inset:0; background:rgba(6,14,10,0.72); display:flex; align-items:center; justify-content:center; z-index:40; padding:16px; }
-      .hold-card{ background:var(--field-panel); width:100%; max-width:460px; border-radius:16px; padding:26px 24px 30px; border:1px solid rgba(243,239,226,0.12); }
-      .input{ width:100%; padding:11px 12px; border-radius:8px; border:1px solid rgba(243,239,226,0.2); background:var(--field-deep); color:var(--chalk); font-family:'Work Sans', sans-serif; font-size:14px; }
-      .clock{ font-family:'Space Mono', monospace; font-size:54px; text-align:center; padding:14px 0; border-radius:10px; margin:14px 0 18px; background:var(--field-deep); border:1px solid rgba(243,239,226,0.1); }
-      .clock.low{ color:var(--danger); border-color:var(--danger); }
-      .row{ display:flex; justify-content:space-between; font-size:14px; padding:7px 0; border-bottom:1px dashed rgba(243,239,226,0.1); }
-      .row b{ font-family:'Space Mono', monospace; }
-      .hold-actions{ display:flex; gap:10px; margin-top:16px; }
-      .hold-actions .btn{ flex:1; }
-      .verifying{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--chalk-dim); justify-content:center; padding:16px 0; }
-      .spinner{ width:14px; height:14px; border-radius:50%; border:2px solid rgba(243,239,226,0.25); border-top-color:var(--flood); animation:spin .8s linear infinite; }
-      @keyframes spin{ to{ transform:rotate(360deg); } }
-      .confirm-wrap{ display:grid; grid-template-columns:1fr; gap:16px; }
-      .wa-bubble{ background:#0B141A; border:1px solid rgba(243,239,226,0.1); border-radius:12px; padding:16px; }
-      .wa-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12px; color:#8FD16A; }
-      .wa-msg{ background:#1F2C34; border-radius:10px 10px 10px 2px; padding:12px 14px; font-size:13.5px; line-height:1.5; color:#E9EDEF; }
-      .cal-card{ background:var(--field-panel); border:1px solid rgba(243,239,226,0.12); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:10px; }
-      .cal-card h4{ margin:0; font-family:'Teko',sans-serif; font-size:22px; }
-      .badge-ok{ display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(127,181,106,0.15); color:var(--turf); padding:5px 10px; border-radius:999px; }
-      table{ width:100%; border-collapse:collapse; font-size:13px; }
-      thead th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--chalk-dim); padding:8px 10px; border-bottom:1px solid rgba(243,239,226,0.14); }
-      tbody td{ padding:10px; border-bottom:1px solid rgba(243,239,226,0.06); }
-      .empty-row td{ color:var(--chalk-dim); text-align:center; padding:26px 10px; }
-      footer{ text-align:center; padding:30px 24px 10px; color:var(--chalk-dim); font-size:12px; }
-    `}</style>
   );
 }
