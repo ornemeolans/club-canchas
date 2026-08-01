@@ -51,30 +51,57 @@ mientras probás.
 
 1. Creá una app de tipo "Business" en [developers.facebook.com](https://developers.facebook.com/)
    y agregále el producto **WhatsApp**.
-2. De ahí sacás `WHATSAPP_TOKEN` (token de acceso) y `WHATSAPP_PHONE_NUMBER_ID`
-   (el número de WhatsApp del club, ya verificado).
-3. El código actual manda un mensaje de texto libre — sólo funciona si el
-   cliente le escribió al número del club en las últimas 24hs. Para mandar
-   confirmaciones fuera de esa ventana (el caso normal acá), hace falta crear
-   y aprobar una **plantilla de mensaje** en el Administrador de WhatsApp, y
-   adaptar `sendWhatsAppConfirmation` en `src/whatsapp.js` para usar
-   `type: "template"` con esa plantilla en vez de `type: "text"`.
+2. En "Personalizar caso de uso" → "Paso 1. Pruébala" tenés un número de
+   prueba gratis, con su **token de acceso temporal** (`WHATSAPP_TOKEN`,
+   dura 24hs) y su **Phone number ID** (`WHATSAPP_PHONE_NUMBER_ID`). Ahí
+   mismo agregás tu celular como "destinatario de prueba" para poder recibir
+   mensajes durante las pruebas.
+3. **Números argentinos**: la API necesita el `9` extra después del `54`
+   (ej. `5493511234567`) — el código ya lo agrega solo si falta
+   (`normalizePhone` en `src/whatsapp.js`), pero tenelo en cuenta si algo no
+   llega y estás probando a mano con `curl`.
+4. Con `WHATSAPP_TEMPLATE_NAME` vacío, el código manda **texto libre** — que
+   sólo entrega si el cliente le escribió al número del club en las últimas
+   24hs. Para el caso real (avisarle a alguien que nunca te escribió antes),
+   Meta exige una **plantilla aprobada**. Para crear una:
+   - En el mismo panel de WhatsApp de tu app, andá a **Administrador de
+     WhatsApp → Plantillas de mensajes → Crear plantilla**.
+   - Categoría: **Utilidad** (utility) — es la que corresponde a
+     confirmaciones de una compra/reserva, no "Marketing".
+   - Cuerpo del mensaje sugerido (con 3 variables, en ese orden):
+     ```
+     ¡Turno confirmado! 🎾⚽
+     {{1}}, {{2}} a las {{3}}.
+     Pago acreditado por Mercado Pago. Te esperamos 10 min antes.
+     ```
+     El código manda esas variables en este orden: cancha, fecha, horario.
+   - Metá el nombre que le pusiste a la plantilla en `WHATSAPP_TEMPLATE_NAME`
+     (y el idioma con el que la aprobaste en `WHATSAPP_TEMPLATE_LANG`, por
+     defecto `es_AR`).
+   - La aprobación de Meta suele tardar minutos a un par de horas. Hasta que
+     esté aprobada, dejá `WHATSAPP_TEMPLATE_NAME` vacío y probá con tu
+     propio número dentro de la ventana de 24hs (mandándole primero un
+     mensaje vos al número de prueba desde tu WhatsApp).
 
 ## 4. Google Sheets (la planilla de turnos)
 
 1. Creá un proyecto en [Google Cloud Console](https://console.cloud.google.com/),
    activá la **Google Sheets API**, y creá una **cuenta de servicio**.
-2. Descargá su clave en formato JSON y guardala como
-   `backend/service-account.json` (o la ruta que pongas en
-   `GOOGLE_SERVICE_ACCOUNT_FILE`). **No la subas a git.**
-3. Creá la planilla de turnos, agregale una hoja llamada `Turnos` con
+2. Descargá su clave en formato JSON. **No la subas a git.**
+3. Abrí ese archivo JSON con un editor de texto, copiá **todo** el
+   contenido, y pegalo como valor de la variable `GOOGLE_SERVICE_ACCOUNT_JSON`
+   en Render (Environment → Add Environment Variable) — tiene que quedar en
+   una sola variable, con el JSON completo adentro. Es más simple que subir
+   un archivo, que en Render no es tan directo (existe su función "Secret
+   Files" si preferís ese camino en vez de la variable de entorno).
+4. Creá la planilla de turnos, agregale una hoja llamada `Turnos` con
    encabezados en la fila 1 (id, deporte, cancha, fecha, horario, cliente,
    teléfono, monto, id de pago, confirmado el), y compartila con el email de
    la cuenta de servicio (está dentro del JSON, campo `client_email`) con
    permiso de **Editor**. Esta planilla es privada — no la compartas
    públicamente ni con "cualquiera con el link"; sólo con esa cuenta de
    servicio y con quien vos decidas darle acceso desde Drive.
-4. Copiá el ID de la planilla (la parte de la URL entre `/d/` y `/edit`) a
+5. Copiá el ID de la planilla (la parte de la URL entre `/d/` y `/edit`) a
    `GOOGLE_SHEET_ID`.
 
 ## Sobre la "planilla" visible en la página

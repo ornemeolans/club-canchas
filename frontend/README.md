@@ -19,8 +19,11 @@ del lado del backend, en `back_urls`). Esta app detecta esa ruta al cargar y
 se queda esperando (haciendo polling) a que el backend confirme el pago vía
 el webhook — no hace falta que el cliente haga nada más.
 
-Para que esa ruta funcione en producción con un server estático, configurá el
-hosting para que sirva `index.html` en cualquier ruta que empiece con
-`/reserva/` (SPA fallback) — con Vercel/Netlify es automático o una línea de
-config; si lo servís vos con Express, agregá un `app.get('*', ...)` que
-devuelva `dist/index.html`.
+Esa ruta (`/reserva/:id`) no es un archivo real, así que necesita que el
+hosting sepa redirigir cualquier ruta a `index.html` y dejar que React se
+encargue (fallback de SPA). Ya está resuelto acá con `public/_redirects`
+(`/* /index.html 200`), que Vite copia automáticamente a `dist/` en cada
+build — con Netlify no hace falta configurar nada más. Si en algún momento
+cambiás a otro hosting, fijate cómo se configura ese mismo fallback ahí
+(en Vercel es automático; si lo servís vos con Express, un
+`app.get('*', ...)` que devuelva `dist/index.html`).

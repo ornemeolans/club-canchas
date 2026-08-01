@@ -8,6 +8,18 @@ function digitsOnly(phone) {
   return String(phone).replace(/\D/g, "");
 }
 
+// Los números de celular argentinos necesitan un "9" extra después del
+// código de país (54) para la API de WhatsApp — un detalle particular de
+// Argentina que si se olvida, el mensaje no llega. Si ya viene con el 9 (o
+// no es un número argentino), lo deja como está.
+function normalizePhone(phone) {
+  const digits = digitsOnly(phone);
+  if (digits.startsWith("54") && digits[2] !== "9") {
+    return `549${digits.slice(2)}`;
+  }
+  return digits;
+}
+
 export async function sendWhatsAppConfirmation(reservation) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -20,15 +32,47 @@ export async function sendWhatsAppConfirmation(reservation) {
     return { skipped: true };
   }
 
-  const to = digitsOnly(reservation.clientPhone);
-  const bodyText =
-    `¡Turno confirmado! 🎾⚽\n` +
-    `${reservation.courtName}, ${reservation.date} a las ${String(reservation.hour).padStart(2, "0")}:00.\n` +
-    `Pago acreditado por Mercado Pago. Te esperamos 10 min antes.`;
+  const to = normalizePhone(reservation.clientPhone);
+  const hour = `${String(reservation.hour).padStart(2, "0")}:00`;
+  const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
 
-  // Mensaje de texto libre — sólo funciona si el cliente escribió al número
-  // del club en las últimas 24hs. Fuera de esa ventana, Meta exige usar una
-  // plantilla (template) pre-aprobada; ver WHATSAPP_TEMPLATE_NAME en .env.
+  // Si hay una plantilla configurada (necesaria para mandar fuera de la
+  // ventana de 24hs desde que el cliente escribió), se manda como
+  // "template". El orden de los parámetros tiene que coincidir con las
+  // variables {{1}}, {{2}}, {{3}} tal como quedó aprobada la plantilla en
+  // Meta — ver la sugerencia de texto en el README del backend.
+  const payload = templateName
+    ? {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "es_AR" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: reservation.courtName },
+                { type: "text", text: reservation.date },
+                { type: "text", text: hour },
+              ],
+            },
+          ],
+        },
+      }
+    : {
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: {
+          body:
+            `¡Turno confirmado! 🎾⚽\n` +
+            `${reservation.courtName}, ${reservation.date} a las ${hour}.\n` +
+            `Pago acreditado por Mercado Pago. Te esperamos 10 min antes.`,
+        },
+      };
+
   const res = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
     {
@@ -37,12 +81,7 @@ export async function sendWhatsAppConfirmation(reservation) {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: bodyText },
-      }),
+      body: JSON.stringify(payload),
     }
   );
 

@@ -246,6 +246,39 @@ export default function App() {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
   }, [reservation]);
 
+  // Alternativa que no depende de tener sesión de Google iniciada: un
+  // archivo .ics descargable, que abre directo en Google Calendar, Outlook,
+  // Apple Calendar, etc.
+  const downloadIcs = () => {
+    if (!reservation) return;
+    const start = new Date(`${reservation.date}T00:00:00`);
+    start.setHours(reservation.hour, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(start.getHours() + 1);
+    const fmt = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Club Canchas//Reservas//ES",
+      "BEGIN:VEVENT",
+      `UID:${reservation.id}@club-canchas`,
+      `DTSTAMP:${fmt(new Date())}`,
+      `DTSTART:${fmt(start)}`,
+      `DTEND:${fmt(end)}`,
+      `SUMMARY:${reservation.sportLabel} — ${reservation.courtName}`,
+      `DESCRIPTION:Turno reservado en el club. Cancha: ${reservation.courtName}.`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `turno-${reservation.date}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (configError) {
     return (
       <div className="app" style={{ padding: 40 }}>
@@ -457,6 +490,9 @@ export default function App() {
               <div className="cal-card">
                 <h4>Agregalo a tu calendario</h4>
                 <a href={gcalUrl} target="_blank" rel="noreferrer" className="btn btn-outline">+ Google Calendar</a>
+                <button onClick={downloadIcs} className="btn btn-ghost" style={{ marginTop: 8 }}>
+                  Descargar .ics
+                </button>
               </div>
             </div>
             <button className="btn btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={() => (window.location.href = "/")}>
