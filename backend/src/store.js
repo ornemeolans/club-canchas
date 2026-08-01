@@ -41,7 +41,7 @@ export function isPastSlot(date, hour) {
 export const SPORTS = {
   futbol: {
     label: "Fútbol",
-    price: 12000,
+    price: 1200,
     courts: [
       { id: "f1", name: "Cancha de Fútbol 1" },
       { id: "f2", name: "Cancha de Fútbol 2" },
@@ -49,7 +49,7 @@ export const SPORTS = {
   },
   tenis: {
     label: "Tenis",
-    price: 9000,
+    price: 900,
     courts: [
       { id: "t1", name: "Cancha de Tenis 1" },
       { id: "t2", name: "Cancha de Tenis 2" },
