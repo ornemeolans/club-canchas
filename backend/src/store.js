@@ -12,6 +12,32 @@ const HOLD_MS = HOLD_MINUTES * 60 * 1000;
 const PAYMENT_GRACE_MINUTES = 15;
 const PAYMENT_GRACE_MS = PAYMENT_GRACE_MINUTES * 60 * 1000;
 
+// Zona horaria del club, para decidir qué horarios ya pasaron. Ajustar acá
+// si el club está en otra provincia con huso distinto.
+const CLUB_TIMEZONE = "America/Argentina/Buenos_Aires";
+
+function nowInClubTimezone() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CLUB_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) };
+}
+
+// Un turno "ya pasó" si es de un día anterior a hoy, o si es hoy y la hora
+// de inicio ya llegó o quedó atrás.
+export function isPastSlot(date, hour) {
+  const now = nowInClubTimezone();
+  if (date < now.date) return true;
+  if (date > now.date) return false;
+  return hour <= now.hour;
+}
+
 export const SPORTS = {
   futbol: {
     label: "Fútbol",
@@ -79,10 +105,16 @@ export function getTakenHours(courtId, date) {
   for (const r of reservations) {
     if (r.courtId === courtId && r.date === date) hours.add(r.hour);
   }
+  // Los horarios que ya pasaron tampoco se ofrecen, aunque nadie los haya
+  // reservado.
+  for (let h = 9; h <= 21; h++) {
+    if (isPastSlot(date, h)) hours.add(h);
+  }
   return [...hours];
 }
 
 export function createHold({ courtId, date, hour, clientName, clientPhone }) {
+  if (isPastSlot(date, hour)) return { error: "past" };
   if (isSlotTaken(courtId, date, hour)) return null;
   const id = nanoid(10);
   const hold = {

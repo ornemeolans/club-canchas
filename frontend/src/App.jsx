@@ -17,6 +17,26 @@ const fmtDateLabel = (d) => ({
   day: d.getDate(),
 });
 
+const CLUB_TIMEZONE = "America/Argentina/Buenos_Aires";
+function nowInClubTimezone() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CLUB_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) };
+}
+function isPastSlot(dateKey, hour) {
+  const now = nowInClubTimezone();
+  if (dateKey < now.date) return true;
+  if (dateKey > now.date) return false;
+  return hour <= now.hour;
+}
+
 // Se usa como placeholder mientras /api/config todavía no respondió.
 const FALLBACK_SPORTS = {
   futbol: { label: "Fútbol", price: 0, courts: [] },
@@ -297,14 +317,21 @@ export default function App() {
               <p className="section-sub">Cargando disponibilidad…</p>
             ) : (
               <div className="slot-grid">
-                {hours.map((h) => {
-                  const taken = takenHours.includes(h);
-                  return (
-                    <div key={h} className={`slot ${taken ? "taken" : ""}`} onClick={() => !taken && openForm(h)}>
-                      {String(h).padStart(2, "0")}:00
-                    </div>
-                  );
-                })}
+                {hours
+                  .filter((h) => !isPastSlot(dateKey, h))
+                  .map((h) => {
+                    const taken = takenHours.includes(h);
+                    return (
+                      <div key={h} className={`slot ${taken ? "taken" : ""}`} onClick={() => !taken && openForm(h)}>
+                        {String(h).padStart(2, "0")}:00
+                      </div>
+                    );
+                  })}
+                {hours.filter((h) => !isPastSlot(dateKey, h)).length === 0 && (
+                  <p className="section-sub" style={{ margin: 0 }}>
+                    No quedan horarios disponibles hoy.
+                  </p>
+                )}
               </div>
             )}
           </div>

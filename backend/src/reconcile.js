@@ -18,7 +18,7 @@ export function startReconciliationJob() {
         const payment = await searchApprovedPaymentByReference(hold.id);
         if (payment) {
           console.log(`[reconcile] Encontré un pago aprobado para el hold ${hold.id} que el webhook no había confirmado todavía.`);
-          await confirmPaymentForHold(hold, payment.id);
+          await confirmPaymentForHold(hold, payment);
         }
       } catch (err) {
         console.error(`[reconcile] Error revisando el hold ${hold.id}:`, err.message);

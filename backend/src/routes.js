@@ -1,16 +1,5 @@
 import { Router } from "express";
-import {
-  SPORTS,
-  findCourt,
-  getTakenHours,
-  createHold,
-  getHold,
-  attachPreference,
-  findHoldByPreference,
-  confirmHold,
-  listReservations,
-  getReservation,
-} from "./store.js";
+import { SPORTS, findCourt, getTakenHours, createHold, getHold, attachPreference, findHoldByPreference, confirmHold, listReservations, getReservation } from "./store.js";
 import { createPaymentPreference, getPayment, searchApprovedPaymentByReference, isValidWebhookSignature } from "./mercadopago.js";
 import { sendWhatsAppConfirmation } from "./whatsapp.js";
 import { appendReservationRow } from "./sheets.js";
@@ -18,8 +7,28 @@ import { appendReservationRow } from "./sheets.js";
 // Confirma una reserva a partir de un pago aprobado, y dispara todo lo que
 // tiene que pasar solo: marcar el turno, mandar WhatsApp, actualizar la
 // planilla. La usan tanto el webhook como el job de reconciliación.
-export async function confirmPaymentForHold(hold, paymentId) {
-  const reservation = confirmHold(hold.id, paymentId);
+//
+// Ojo con lo que SÍ y lo que NO se valida acá: no se compara el nombre que
+// puso el cliente en el formulario contra el nombre del titular de la
+// cuenta que pagó — esa comparación no es confiable (alguien puede pagar
+// desde la cuenta de un familiar, por ejemplo) y no es lo que usa Mercado
+// Pago para identificar el pago. Lo que sí se valida es que el pago esté
+// `approved` y que el monto coincida con el precio de esa cancha — el
+// enlace con la reserva ya lo garantiza el `external_reference` (el id del
+// hold), que viene firmado y validado en el webhook.
+export async function confirmPaymentForHold(hold, payment) {
+  if (payment.status !== "approved") return null;
+
+  const found = findCourt(hold.courtId);
+  const expectedAmount = found?.sport?.price;
+  if (expectedAmount != null && payment.transaction_amount !== expectedAmount) {
+    console.warn(
+      `[confirm] Monto no coincide para el hold ${hold.id}: esperado ${expectedAmount}, pagado ${payment.transaction_amount}. No se confirma.`
+    );
+    return null;
+  }
+
+  const reservation = confirmHold(hold.id, payment.id);
   if (!reservation) return null;
   await Promise.allSettled([
     sendWhatsAppConfirmation(reservation),
@@ -57,6 +66,9 @@ router.post("/holds", (req, res) => {
 
   const hold = createHold({ courtId, date, hour, clientName, clientPhone });
   if (!hold) return res.status(409).json({ error: "Ese horario ya no está disponible" });
+  if (hold.error === "past") {
+    return res.status(409).json({ error: "Ese horario ya pasó" });
+  }
 
   res.status(201).json({ hold });
 });
@@ -125,7 +137,7 @@ router.post("/webhooks/mercadopago", async (req, res) => {
       return;
     }
 
-    const reservation = await confirmPaymentForHold(hold, dataId);
+    const reservation = await confirmPaymentForHold(hold, payment);
     if (!reservation) return;
   } catch (err) {
     console.error("[webhook] Error procesando la notificación:", err);
@@ -143,7 +155,7 @@ router.post("/holds/:id/verify", async (req, res) => {
     const payment = await searchApprovedPaymentByReference(hold.id);
     if (!payment) return res.json({ confirmed: false });
 
-    const reservation = await confirmPaymentForHold(hold, payment.id);
+    const reservation = await confirmPaymentForHold(hold, payment);
     res.json({ confirmed: !!reservation, reservation });
   } catch (err) {
     console.error("[verify] Error consultando Mercado Pago:", err);

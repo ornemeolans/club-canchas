@@ -90,6 +90,29 @@ en el header `x-admin-token` con el valor de `ADMIN_TOKEN` del `.env`. Es
 para que vos puedas consultarlo si alguna vez lo necesitás (por ejemplo con
 `curl`), no para que lo use la página.
 
+## Horarios que ya pasaron
+
+Un turno de hoy cuya hora de inicio ya llegó (o quedó atrás) no se ofrece,
+aunque nadie lo haya reservado — ni en `/api/availability` (aparece como
+ocupado) ni en la página (directamente no se muestra). Se calcula en
+`store.js` con la zona horaria del club (`America/Argentina/Buenos_Aires`
+por defecto — cambiala ahí si el club está en otro huso). Además, intentar
+crear un hold para un horario pasado se rechaza en `POST /api/holds` aunque
+alguien le pegue directo a la API sin pasar por la página.
+
+## Sobre el nombre del cliente vs. quién transfiere
+
+El formulario le pide nombre y WhatsApp al cliente, pero **no se compara
+ese nombre contra el titular de la cuenta de Mercado Pago que hace la
+transferencia** — y es intencional. Alguien puede perfectamente pagar desde
+la cuenta de un familiar o de otra persona; exigir que coincida rechazaría
+reservas legítimas todo el tiempo. Lo que realmente vincula el pago con la
+reserva es el `external_reference` (el id del hold), que va firmado en la
+preferencia y se valida en el webhook — no el nombre. Como capa extra de
+seguridad, sí se valida que el **monto** pagado coincida exactamente con el
+precio de esa cancha antes de confirmar (ver `confirmPaymentForHold` en
+`routes.js`).
+
 ## Dos capas de confirmación (no depende de una sola)
 
 1. **Webhook** (`/api/webhooks/mercadopago`) — Mercado Pago le pega a esta URL
