@@ -34,6 +34,7 @@ export async function sendWhatsAppConfirmation(reservation) {
   }
 
   const to = normalizePhone(reservation.clientPhone);
+  console.log(`[whatsapp] Tal como lo cargó el cliente: "${reservation.clientPhone}" → mandando a: "${to}"`);
   const hour = `${String(reservation.hour).padStart(2, "0")}:00`;
   const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
 
