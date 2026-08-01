@@ -9,16 +9,21 @@ function digitsOnly(phone) {
 }
 
 // Ojo: en algún momento este archivo insertaba automáticamente un "9" extra
-// para números argentinos (una regla que corre para algunas plataformas,
-// pero no siempre para la API de WhatsApp — depende de cómo esté
-// registrado el número). Se sacó porque terminaba armando un número
-// distinto al que realmente está verificado como destinatario de prueba en
-// Meta, y eso rompía el envío. Ahora se manda tal cual lo carga el
-// cliente en el formulario — asegurate de que el número que probás en el
-// sitio sea EXACTAMENTE igual (mismo formato) al que aparece verificado en
-// el panel de Meta como destinatario de prueba.
+// para números argentinos — se sacó porque terminaba armando un número
+// distinto al que realmente estaba verificado como destinatario de prueba
+// en Meta (ver historial). Lo único que se completa acá es el código de
+// país si falta directamente: si el cliente escribe el número local, sin
+// "54" adelante (10 dígitos: código de área + número, formato típico
+// argentino), se lo agregamos. Si ya viene con código de país, o tiene otra
+// cantidad de dígitos, se manda tal cual lo escribió — así no hay
+// ambigüedad ni se corre el riesgo de armar un número distinto al
+// verificado.
 function normalizePhone(phone) {
-  return digitsOnly(phone);
+  const digits = digitsOnly(phone);
+  if (digits.length === 10 && !digits.startsWith("54")) {
+    return `54${digits}`;
+  }
+  return digits;
 }
 
 export async function sendWhatsAppConfirmation(reservation) {
