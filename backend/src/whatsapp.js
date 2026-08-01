@@ -65,6 +65,17 @@ export async function sendWhatsAppConfirmation(reservation) {
                 { type: "text", text: hour },
               ],
             },
+            // Botón "Agregar al calendario" con URL dinámica — la parte fija
+            // (https://tu-front/reserva/) ya está cargada en la plantilla
+            // aprobada en Meta; acá sólo se completa la parte variable
+            // ({{1}} del botón) con el id de esta reserva puntual, así el
+            // link lleva a la pantalla de confirmación de este turno.
+            {
+              type: "button",
+              sub_type: "url",
+              index: "0",
+              parameters: [{ type: "text", text: reservation.id }],
+            },
           ],
         },
       }
@@ -76,7 +87,8 @@ export async function sendWhatsAppConfirmation(reservation) {
           body:
             `¡Turno confirmado! 🎾⚽\n` +
             `${reservation.courtName}, ${reservation.date} a las ${hour}.\n` +
-            `Pago acreditado por Mercado Pago. Te esperamos 10 min antes.`,
+            `Pago acreditado por Mercado Pago. Te esperamos 10 min antes.\n\n` +
+            `Agregalo a tu calendario: ${process.env.FRONTEND_URL}/reserva/${reservation.id}`,
         },
       };
 

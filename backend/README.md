@@ -81,6 +81,11 @@ mientras probás.
    - Metá el nombre que le pusiste a la plantilla en `WHATSAPP_TEMPLATE_NAME`
      (y el idioma con el que la aprobaste en `WHATSAPP_TEMPLATE_LANG`, por
      defecto `es_AR`).
+   - Opcional: agregale un botón "Ir al sitio web" con URL **dinámica**,
+     base `https://TU-FRONT/reserva/` — así el mensaje incluye un botón para
+     volver a la pantalla de confirmación de esa reserva (que ya tiene el
+     link de Google Calendar y el de descargar `.ics`). El código ya manda
+     el id de la reserva como el valor de esa parte variable del botón.
    - La aprobación de Meta suele tardar minutos a un par de horas. Hasta que
      esté aprobada, dejá `WHATSAPP_TEMPLATE_NAME` vacío y probá con tu
      propio número dentro de la ventana de 24hs (mandándole primero un
