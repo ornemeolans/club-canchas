@@ -2,24 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { api } from "./api.js";
 import "./styles.css";
 
-function nextDays(n) {
-  const out = [];
-  const today = new Date();
-  for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    out.push(d);
-  }
-  return out;
-}
-const fmtDateKey = (d) => d.toISOString().slice(0, 10);
-const fmtDateLabel = (d) => ({
-  weekday: d.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", ""),
-  day: d.getDate(),
-});
-
 const CLUB_TIMEZONE = "America/Argentina/Buenos_Aires";
-function nowInClubTimezone() {
+
+// "Hoy" según la hora del club (Argentina), no la del dispositivo del
+// visitante ni una conversión a UTC — evitar ambas es lo que previene el
+// bug de "se corre un día" a la noche.
+function clubNowParts() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: CLUB_TIMEZONE,
     year: "numeric",
@@ -28,8 +16,39 @@ function nowInClubTimezone() {
     hour: "2-digit",
     hour12: false,
   }).formatToParts(new Date());
-  const get = (type) => parts.find((p) => p.type === type)?.value;
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) };
+  const get = (type) => Number(parts.find((p) => p.type === type)?.value);
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour") };
+}
+
+// Cada elemento representa una fecha de calendario (no un instante), anclada
+// a medianoche UTC — de ahí en más SIEMPRE se lee con getUTC*, nunca con los
+// getters locales, para que no dependa del huso horario del navegador.
+function nextDays(n) {
+  const { year, month, day } = clubNowParts();
+  const anchor = Date.UTC(year, month - 1, day);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(new Date(anchor + i * 86400000));
+  }
+  return out;
+}
+function fmtDateKey(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function fmtDateLabel(d) {
+  const weekday = new Intl.DateTimeFormat("es-AR", { weekday: "short", timeZone: "UTC" })
+    .format(d)
+    .replace(".", "");
+  return { weekday, day: d.getUTCDate() };
+}
+
+function nowInClubTimezone() {
+  const { year, month, day, hour } = clubNowParts();
+  const pad = (n) => String(n).padStart(2, "0");
+  return { date: `${year}-${pad(month)}-${pad(day)}`, hour };
 }
 function isPastSlot(dateKey, hour) {
   const now = nowInClubTimezone();
@@ -76,7 +95,6 @@ export default function App() {
 
   const sportDef = sports[sport] || FALLBACK_SPORTS[sport];
   const court = sportDef.courts.find((c) => c.id === courtId) || null;
-  const date = days[dateIdx];
   const dateKey = dateKeys[dateIdx];
 
   // ---- Carga inicial: config + si venimos de vuelta del checkout de MP ----
@@ -235,12 +253,19 @@ export default function App() {
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const low = secondsLeft <= 60;
 
+  // Argentina no tiene horario de verano — UTC-3 fijo todo el año. Se arma
+  // el horario del evento a partir de eso directamente, para que el
+  // turno quede a la hora correcta sin importar en qué huso esté el
+  // navegador de quien reservó.
+  const argentinaWallTimeToUTC = (dateStr, hour) => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d, hour + 3, 0, 0));
+  };
+
   const gcalUrl = useMemo(() => {
     if (!reservation) return "#";
-    const start = new Date(`${reservation.date}T00:00:00`);
-    start.setHours(reservation.hour, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(start.getHours() + 1);
+    const start = argentinaWallTimeToUTC(reservation.date, reservation.hour);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
     const fmt = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const text = encodeURIComponent(`${reservation.sportLabel} — ${reservation.courtName}`);
     const details = encodeURIComponent(`Turno reservado en el club. Cancha: ${reservation.courtName}.`);
@@ -252,10 +277,8 @@ export default function App() {
   // Apple Calendar, etc.
   const downloadIcs = () => {
     if (!reservation) return;
-    const start = new Date(`${reservation.date}T00:00:00`);
-    start.setHours(reservation.hour, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(start.getHours() + 1);
+    const start = argentinaWallTimeToUTC(reservation.date, reservation.hour);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
     const fmt = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const ics = [
       "BEGIN:VCALENDAR",

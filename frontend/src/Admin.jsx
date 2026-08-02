@@ -3,21 +3,42 @@ import { api, adminApi } from "./api.js";
 import "./styles.css";
 import "./admin.css";
 
+const CLUB_TIMEZONE = "America/Argentina/Buenos_Aires";
+
+function clubNowParts() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CLUB_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type) => Number(parts.find((p) => p.type === type)?.value);
+  return { year: get("year"), month: get("month"), day: get("day") };
+}
+
 function nextDays(n) {
+  const { year, month, day } = clubNowParts();
+  const anchor = Date.UTC(year, month - 1, day);
   const out = [];
-  const today = new Date();
   for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    out.push(d);
+    out.push(new Date(anchor + i * 86400000));
   }
   return out;
 }
-const fmtDateKey = (d) => d.toISOString().slice(0, 10);
-const fmtDateLabel = (d) => ({
-  weekday: d.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", ""),
-  day: d.getDate(),
-});
+function fmtDateKey(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function fmtDateLabel(d) {
+  const weekday = new Intl.DateTimeFormat("es-AR", { weekday: "short", timeZone: "UTC" })
+    .format(d)
+    .replace(".", "");
+  return { weekday, day: d.getUTCDate() };
+}
 
 const STATUS_LABEL = {
   available: "Disponible",
