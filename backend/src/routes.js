@@ -1,5 +1,19 @@
 import { Router } from "express";
-import { SPORTS, findCourt, getTakenHours, createHold, getHold, attachPreference, findHoldByPreference, confirmHold, listReservations, getReservation } from "./store.js";
+import {
+  SPORTS,
+  findCourt,
+  getTakenHours,
+  createHold,
+  getHold,
+  attachPreference,
+  findHoldByPreference,
+  confirmHold,
+  listReservations,
+  getReservation,
+  getCourtSchedule,
+  createBlock,
+  removeBlock,
+} from "./store.js";
 import { createPaymentPreference, getPayment, searchApprovedPaymentByReference, isValidWebhookSignature } from "./mercadopago.js";
 import { sendWhatsAppConfirmation } from "./whatsapp.js";
 import { appendReservationRow } from "./sheets.js";
@@ -38,6 +52,16 @@ export async function confirmPaymentForHold(hold, payment) {
 }
 
 const router = Router();
+
+// Todo lo de /admin es para uso interno del club, no para la página
+// pública — pide la clave simple (ADMIN_TOKEN) en el header.
+function requireAdmin(req, res, next) {
+  const token = req.headers["x-admin-token"];
+  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
+  next();
+}
 
 // Config de deportes/canchas/horarios para que el front no la tenga hardcodeada.
 router.get("/config", (_req, res) => {
@@ -166,11 +190,7 @@ router.post("/holds/:id/verify", async (req, res) => {
 // Planilla de turnos confirmados. Esto es para uso interno del club, no
 // para la página pública — por eso pide una clave simple en el header.
 // (La "planilla" de verdad, para el día a día, es el Google Sheet privado.)
-router.get("/reservations", (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: "No autorizado" });
-  }
+router.get("/reservations", requireAdmin, (_req, res) => {
   res.json({ reservations: listReservations() });
 });
 
@@ -179,6 +199,45 @@ router.get("/reservations/:id", (req, res) => {
   const reservation = getReservation(req.params.id);
   if (!reservation) return res.status(404).json({ error: "No encontrada" });
   res.json({ reservation });
+});
+
+// Vista de calendario para el administrador: todas las canchas de un
+// deporte, con el estado de cada horario para una fecha (disponible,
+// reservado, bloqueado, en curso de pago, o ya pasado).
+router.get("/admin/schedule", requireAdmin, (req, res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: "Falta date" });
+
+  const courts = Object.values(SPORTS).flatMap((sport) =>
+    sport.courts.map((court) => ({
+      courtId: court.id,
+      courtName: court.name,
+      sportLabel: sport.label,
+      hours: getCourtSchedule(court.id, date),
+    }))
+  );
+  res.json({ date, courts });
+});
+
+// Bloquear un horario a mano (clases, mantenimiento, etc.) para que no
+// aparezca disponible, sin que haya una reserva real detrás.
+router.post("/admin/blocks", requireAdmin, (req, res) => {
+  const { courtId, date, hour, reason } = req.body || {};
+  if (!courtId || !date || hour == null) {
+    return res.status(400).json({ error: "Faltan datos (courtId, date, hour)" });
+  }
+  if (!findCourt(courtId)) return res.status(404).json({ error: "Cancha inexistente" });
+
+  const block = createBlock({ courtId, date, hour, reason });
+  if (!block) return res.status(409).json({ error: "Ese horario ya no está disponible para bloquear" });
+  res.status(201).json({ block });
+});
+
+// Sacar un bloqueo (volver a habilitar ese horario para reservar).
+router.delete("/admin/blocks/:id", requireAdmin, (req, res) => {
+  const removed = removeBlock(req.params.id);
+  if (!removed) return res.status(404).json({ error: "Bloqueo no encontrado" });
+  res.status(204).end();
 });
 
 export default router;

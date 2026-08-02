@@ -74,12 +74,41 @@ const holds = new Map();
 // reservations: turnos ya confirmados (pago acreditado). Esto es "la planilla".
 const reservations = [];
 
+// blocks: horarios que el club bloqueó a mano (clases, mantenimiento, etc.)
+// para que no aparezcan como disponibles, sin que exista una reserva real.
+// [{ id, courtId, date, hour, reason, createdAt }]
+const blocks = [];
+
 function slotKey(courtId, date, hour) {
   return `${courtId}__${date}__${hour}`;
 }
 
+export function isSlotBlocked(courtId, date, hour) {
+  return blocks.some((b) => slotKey(b.courtId, b.date, b.hour) === slotKey(courtId, date, hour));
+}
+
+export function getBlock(courtId, date, hour) {
+  return blocks.find((b) => slotKey(b.courtId, b.date, b.hour) === slotKey(courtId, date, hour)) || null;
+}
+
+export function createBlock({ courtId, date, hour, reason }) {
+  if (isSlotBlocked(courtId, date, hour)) return null;
+  const id = nanoid(10);
+  const block = { id, courtId, date, hour, reason: reason || "", createdAt: Date.now() };
+  blocks.push(block);
+  return block;
+}
+
+export function removeBlock(id) {
+  const idx = blocks.findIndex((b) => b.id === id);
+  if (idx === -1) return false;
+  blocks.splice(idx, 1);
+  return true;
+}
+
 export function isSlotTaken(courtId, date, hour) {
   const key = slotKey(courtId, date, hour);
+  if (isSlotBlocked(courtId, date, hour)) return true;
   const activeHold = [...holds.values()].some(
     (h) =>
       slotKey(h.courtId, h.date, h.hour) === key &&
@@ -105,12 +134,64 @@ export function getTakenHours(courtId, date) {
   for (const r of reservations) {
     if (r.courtId === courtId && r.date === date) hours.add(r.hour);
   }
+  for (const b of blocks) {
+    if (b.courtId === courtId && b.date === date) hours.add(b.hour);
+  }
   // Los horarios que ya pasaron tampoco se ofrecen, aunque nadie los haya
   // reservado.
   for (let h = 9; h <= 21; h++) {
     if (isPastSlot(date, h)) hours.add(h);
   }
   return [...hours];
+}
+
+// Vista completa de una cancha/fecha para el panel de administrador: el
+// estado de cada hora (disponible, en curso de pago, reservada, bloqueada,
+// o ya pasada), con el detalle que corresponda en cada caso.
+export function getCourtSchedule(courtId, date) {
+  const hours = [];
+  for (let hour = 9; hour <= 21; hour++) {
+    const reservation = reservations.find(
+      (r) => r.courtId === courtId && r.date === date && r.hour === hour
+    );
+    if (reservation) {
+      hours.push({
+        hour,
+        status: "reserved",
+        clientName: reservation.clientName,
+        clientPhone: reservation.clientPhone,
+        amount: reservation.amount,
+      });
+      continue;
+    }
+
+    const block = getBlock(courtId, date, hour);
+    if (block) {
+      hours.push({ hour, status: "blocked", blockId: block.id, reason: block.reason });
+      continue;
+    }
+
+    const hold = [...holds.values()].find(
+      (h) =>
+        h.courtId === courtId &&
+        h.date === date &&
+        h.hour === hour &&
+        (h.status === "pending" || h.status === "paying") &&
+        h.expiresAt > Date.now()
+    );
+    if (hold) {
+      hours.push({ hour, status: "holding", clientName: hold.clientName });
+      continue;
+    }
+
+    if (isPastSlot(date, hour)) {
+      hours.push({ hour, status: "past" });
+      continue;
+    }
+
+    hours.push({ hour, status: "available" });
+  }
+  return hours;
 }
 
 export function createHold({ courtId, date, hour, clientName, clientPhone }) {

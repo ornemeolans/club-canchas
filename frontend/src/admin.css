@@ -1,0 +1,93 @@
+.admin-hero {
+  padding-bottom: 24px;
+}
+
+.admin-login-card {
+  background: var(--field-panel);
+  border: 1px solid rgba(243, 239, 226, 0.12);
+  border-radius: 16px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 10px;
+}
+@media (max-width: 720px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-court {
+  background: var(--field-deep);
+  border: 1px solid rgba(243, 239, 226, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+}
+.admin-court-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+.admin-court-head .display {
+  font-size: 22px;
+}
+
+.admin-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+}
+
+.admin-slot {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  padding: 10px 0;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--field-deep);
+  font-weight: 600;
+}
+.admin-slot:disabled {
+  cursor: default;
+}
+
+.admin-slot-available {
+  background: var(--turf);
+}
+.admin-slot-reserved {
+  background: var(--flood);
+}
+.admin-slot-blocked {
+  background: var(--danger);
+  color: var(--chalk);
+}
+.admin-slot-past,
+.admin-slot-holding {
+  background: rgba(243, 239, 226, 0.08);
+  color: var(--chalk-dim);
+}
+
+.admin-legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+.admin-legend .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-right: 6px;
+}
