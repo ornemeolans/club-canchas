@@ -31,6 +31,12 @@ export const adminApi = {
       headers: { "x-admin-token": token },
       body: JSON.stringify(payload),
     }),
+  createBulkBlock: (payload, token) =>
+    request("/admin/blocks/bulk", {
+      method: "POST",
+      headers: { "x-admin-token": token },
+      body: JSON.stringify(payload),
+    }),
   removeBlock: (id, token) =>
     request(`/admin/blocks/${id}`, { method: "DELETE", headers: { "x-admin-token": token } }),
 };

@@ -13,6 +13,7 @@ import {
   getCourtSchedule,
   createBlock,
   removeBlock,
+  createBlockSeries,
 } from "./store.js";
 import { createPaymentPreference, getPayment, searchApprovedPaymentByReference, isValidWebhookSignature } from "./mercadopago.js";
 import { sendWhatsAppConfirmation } from "./whatsapp.js";
@@ -231,6 +232,26 @@ router.post("/admin/blocks", requireAdmin, (req, res) => {
   const block = createBlock({ courtId, date, hour, reason });
   if (!block) return res.status(409).json({ error: "Ese horario ya no está disponible para bloquear" });
   res.status(201).json({ block });
+});
+
+// Bloquear muchos turnos de una sola vez (ej. una clase semanal durante
+// varios meses): mismo horario y cancha, en una lista de fechas. Queda
+// registrado como una "serie" — cuando llegue el último día de esa lista,
+// se manda un mail solo avisando que hay que decidir si se sigue
+// bloqueando o se libera el horario.
+router.post("/admin/blocks/bulk", requireAdmin, (req, res) => {
+  const { courtId, hour, dates, reason } = req.body || {};
+  if (!courtId || hour == null || !Array.isArray(dates) || dates.length === 0) {
+    return res.status(400).json({ error: "Faltan datos (courtId, hour, dates[])" });
+  }
+  if (!findCourt(courtId)) return res.status(404).json({ error: "Cancha inexistente" });
+
+  const { series, created, skipped } = createBlockSeries({ courtId, hour, dates, reason });
+  res.status(201).json({
+    series,
+    createdCount: created.length,
+    skippedDates: skipped, // fechas que ya estaban ocupadas y no se pudieron bloquear
+  });
 });
 
 // Sacar un bloqueo (volver a habilitar ese horario para reservar).

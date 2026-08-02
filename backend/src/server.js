@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import routes from "./routes.js";
 import { startReconciliationJob } from "./reconcile.js";
+import { startBlockSeriesAlertJob } from "./alerts.js";
 
 const app = express();
 
@@ -20,6 +21,8 @@ app.listen(port, () => {
   console.log(`Backend escuchando en http://localhost:${port}`);
   startReconciliationJob();
   console.log("Job de reconciliación con Mercado Pago activo (cada 60s).");
+  startBlockSeriesAlertJob();
+  console.log("Job de alertas de bloqueos por mail activo (cada 1h).");
   if (!process.env.MP_ACCESS_TOKEN) {
     console.warn("⚠️  Falta MP_ACCESS_TOKEN en .env — el pago no va a funcionar.");
   }

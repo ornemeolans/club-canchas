@@ -48,6 +48,34 @@ const STATUS_LABEL = {
   past: "Pasó",
 };
 
+const HOURS = Array.from({ length: 13 }, (_, i) => 9 + i);
+const WEEKDAYS = [
+  { label: "Lun", value: 1 },
+  { label: "Mar", value: 2 },
+  { label: "Mié", value: 3 },
+  { label: "Jue", value: 4 },
+  { label: "Vie", value: 5 },
+  { label: "Sáb", value: 6 },
+  { label: "Dom", value: 0 },
+];
+
+function datesInRange(startDate, endDate, weekdays) {
+  if (!startDate || !endDate) return [];
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  const start = Date.UTC(sy, sm - 1, sd);
+  const end = Date.UTC(ey, em - 1, ed);
+  if (end < start) return [];
+  const out = [];
+  for (let t = start; t <= end; t += 86400000) {
+    const d = new Date(t);
+    if (weekdays.length === 0 || weekdays.includes(d.getUTCDay())) {
+      out.push(fmtDateKey(d));
+    }
+  }
+  return out;
+}
+
 export default function Admin() {
   const [token, setToken] = useState(() => localStorage.getItem("admin_token") || "");
   const [tokenInput, setTokenInput] = useState("");
@@ -64,6 +92,16 @@ export default function Admin() {
   const [blockTarget, setBlockTarget] = useState(null); // { courtId, courtName, hour }
   const [blockReason, setBlockReason] = useState("");
   const [detailSlot, setDetailSlot] = useState(null); // reserved slot detail popover
+
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkCourtId, setBulkCourtId] = useState("");
+  const [bulkHour, setBulkHour] = useState(HOURS[0]);
+  const [bulkStart, setBulkStart] = useState(dateKey);
+  const [bulkEnd, setBulkEnd] = useState(dateKey);
+  const [bulkWeekdays, setBulkWeekdays] = useState([]);
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkResult, setBulkResult] = useState(null);
+  const [bulkError, setBulkError] = useState(null);
 
   const loadSchedule = useCallback(() => {
     if (!token) return;
@@ -130,6 +168,42 @@ export default function Admin() {
     }
   };
 
+  const bulkDates = useMemo(
+    () => datesInRange(bulkStart, bulkEnd, bulkWeekdays),
+    [bulkStart, bulkEnd, bulkWeekdays]
+  );
+
+  const openBulk = () => {
+    setBulkCourtId(courts[0]?.courtId || "");
+    setBulkHour(HOURS[0]);
+    setBulkStart(dateKey);
+    setBulkEnd(dateKey);
+    setBulkWeekdays([]);
+    setBulkReason("");
+    setBulkResult(null);
+    setBulkError(null);
+    setBulkOpen(true);
+  };
+
+  const toggleWeekday = (value) => {
+    setBulkWeekdays((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+  };
+
+  const submitBulk = async () => {
+    if (!bulkCourtId || bulkDates.length === 0) return;
+    setBulkError(null);
+    try {
+      const res = await adminApi.createBulkBlock(
+        { courtId: bulkCourtId, hour: Number(bulkHour), dates: bulkDates, reason: bulkReason },
+        token
+      );
+      setBulkResult(res);
+      loadSchedule();
+    } catch (err) {
+      setBulkError(err.message);
+    }
+  };
+
   if (!token) {
     return (
       <div className="app admin-login">
@@ -168,6 +242,9 @@ export default function Admin() {
             Tocá un horario disponible para bloquearlo (clases, mantenimiento), o uno bloqueado para volver a
             habilitarlo.
           </p>
+          <button className="btn btn-primary" onClick={openBulk} style={{ marginRight: 10 }}>
+            Bloquear varios turnos
+          </button>
           <button className="btn btn-ghost" onClick={logout}>
             Salir
           </button>
@@ -309,6 +386,100 @@ export default function Admin() {
             <button className="btn btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={() => setDetailSlot(null)}>
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+      {bulkOpen && (
+        <div className="hold-overlay" onClick={() => setBulkOpen(false)}>
+          <div className="hold-card" style={{ maxWidth: 500 }} onClick={(e) => e.stopPropagation()}>
+            <div className="eyebrow">Bloquear varios turnos</div>
+            <p style={{ fontSize: 12.5, color: "var(--chalk-dim)", marginTop: 0 }}>
+              Mismo horario y cancha, en un rango de fechas — útil para una clase que se repite todas las
+              semanas, o para bloquear varios días seguidos (mantenimiento, torneo, etc.).
+            </p>
+
+            <label className="admin-field-label">Cancha</label>
+            <select className="input" value={bulkCourtId} onChange={(e) => setBulkCourtId(e.target.value)}>
+              {courts.map((c) => (
+                <option key={c.courtId} value={c.courtId}>
+                  {c.courtName} — {c.sportLabel}
+                </option>
+              ))}
+            </select>
+
+            <label className="admin-field-label">Horario</label>
+            <select className="input" value={bulkHour} onChange={(e) => setBulkHour(e.target.value)}>
+              {HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {String(h).padStart(2, "0")}:00
+                </option>
+              ))}
+            </select>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label className="admin-field-label">Desde</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={bulkStart}
+                  onChange={(e) => setBulkStart(e.target.value)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="admin-field-label">Hasta</label>
+                <input className="input" type="date" value={bulkEnd} onChange={(e) => setBulkEnd(e.target.value)} />
+              </div>
+            </div>
+
+            <label className="admin-field-label">
+              Repetir sólo estos días (dejalo vacío para bloquear todos los días del rango)
+            </label>
+            <div className="admin-weekdays">
+              {WEEKDAYS.map((w) => (
+                <button
+                  type="button"
+                  key={w.value}
+                  className={`admin-weekday ${bulkWeekdays.includes(w.value) ? "selected" : ""}`}
+                  onClick={() => toggleWeekday(w.value)}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+
+            <label className="admin-field-label">Motivo</label>
+            <input
+              className="input"
+              placeholder="Ej: clase de tenis con profe Juan"
+              value={bulkReason}
+              onChange={(e) => setBulkReason(e.target.value)}
+            />
+
+            <p style={{ fontSize: 12.5, color: "var(--chalk-dim)", margin: "12px 0 0" }}>
+              Esto va a bloquear <b>{bulkDates.length}</b> turno{bulkDates.length === 1 ? "" : "s"}
+              {bulkDates.length > 0 && ` (del ${bulkDates[0]} al ${bulkDates[bulkDates.length - 1]})`}.
+              Cuando llegue el último, te mandamos un mail para avisar y que decidas si seguís bloqueando o lo
+              liberás para alquilar.
+            </p>
+
+            {bulkError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{bulkError}</p>}
+            {bulkResult && (
+              <p style={{ color: "var(--turf)", fontSize: 13 }}>
+                Se bloquearon {bulkResult.createdCount} turnos.
+                {bulkResult.skippedDates.length > 0 &&
+                  ` ${bulkResult.skippedDates.length} ya estaban ocupados y no se tocaron: ${bulkResult.skippedDates.join(", ")}.`}
+              </p>
+            )}
+
+            <div className="hold-actions">
+              <button className="btn btn-ghost" onClick={() => setBulkOpen(false)}>
+                Cerrar
+              </button>
+              <button className="btn btn-primary" onClick={submitBulk} disabled={bulkDates.length === 0}>
+                Bloquear {bulkDates.length > 0 ? `(${bulkDates.length})` : ""}
+              </button>
+            </div>
           </div>
         </div>
       )}

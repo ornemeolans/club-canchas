@@ -13,6 +13,7 @@
     "express": "^4.19.2",
     "googleapis": "^140.0.1",
     "mercadopago": "^2.0.15",
-    "nanoid": "^5.0.7"
+    "nanoid": "^5.0.7",
+    "nodemailer": "^6.9.14"
   }
 }

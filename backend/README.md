@@ -176,6 +176,37 @@ consulta a mano si alguna vez hace falta.
 | POST | `/api/webhooks/mercadopago` | Lo llama Mercado Pago solo — confirma el pago |
 | GET | `/api/reservations` | Planilla de turnos confirmados |
 | GET | `/api/reservations/:id` | Un turno confirmado puntual |
+| GET | `/api/admin/schedule?date` | Calendario completo (todas las canchas) para el panel de admin |
+| POST | `/api/admin/blocks` | Bloquea un turno puntual (`courtId, date, hour, reason`) |
+| DELETE | `/api/admin/blocks/:id` | Saca un bloqueo |
+| POST | `/api/admin/blocks/bulk` | Bloquea muchos turnos de una (`courtId, hour, dates[], reason`) |
+
+Las rutas bajo `/admin` piden `ADMIN_TOKEN` en el header `x-admin-token`, igual
+que `/api/reservations`.
+
+## Panel de administrador
+
+En `frontend`, la ruta `/admin` (ej. `https://tu-sitio.netlify.app/admin`) es
+un calendario visual de las 4 canchas, protegido por la misma `ADMIN_TOKEN`.
+Desde ahí se puede:
+
+- Tocar un horario disponible para bloquearlo (clases, mantenimiento) o uno
+  bloqueado para liberarlo.
+- **Bloquear varios turnos de una vez**: mismo horario y cancha, en un rango
+  de fechas, opcionalmente repitiendo sólo ciertos días de la semana (por
+  ejemplo, "todos los martes de agosto"). Internamente queda guardado como
+  una "serie" (`createBlockSeries` en `store.js`).
+
+### Alerta por mail al llegar al último turno bloqueado
+
+Cuando la fecha del **último** turno de una de esas series llega (o ya
+pasó), un job que corre cada una hora (`src/alerts.js`) manda un mail al
+dueño del club avisando — para que decida si carga más fechas (la clase
+sigue) o no hace nada y el horario queda libre para alquilar de nuevo
+automáticamente. Necesita las variables `EMAIL_*` del `.env` (cualquier
+servidor SMTP sirve, ver `.env.example` para un ejemplo con Gmail). Sin esas
+variables cargadas, el resto del sistema sigue funcionando igual — sólo no
+se manda el mail (se avisa por log).
 
 ## Nota sobre el store
 

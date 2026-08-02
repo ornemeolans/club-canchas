@@ -91,10 +91,10 @@ export function getBlock(courtId, date, hour) {
   return blocks.find((b) => slotKey(b.courtId, b.date, b.hour) === slotKey(courtId, date, hour)) || null;
 }
 
-export function createBlock({ courtId, date, hour, reason }) {
+export function createBlock({ courtId, date, hour, reason, seriesId }) {
   if (isSlotBlocked(courtId, date, hour)) return null;
   const id = nanoid(10);
-  const block = { id, courtId, date, hour, reason: reason || "", createdAt: Date.now() };
+  const block = { id, courtId, date, hour, reason: reason || "", seriesId: seriesId || null, createdAt: Date.now() };
   blocks.push(block);
   return block;
 }
@@ -104,6 +104,48 @@ export function removeBlock(id) {
   if (idx === -1) return false;
   blocks.splice(idx, 1);
   return true;
+}
+
+// blockSeries: agrupa un bloqueo masivo (ej. "cancha de tenis 1, 18hs,
+// todos los martes de agosto") para poder avisar por mail cuando se acerca
+// el último turno bloqueado de la tanda.
+// [{ id, courtId, hour, reason, dates: [...], lastDate, createdAt, alerted }]
+const blockSeries = [];
+
+export function createBlockSeries({ courtId, hour, dates, reason }) {
+  const seriesId = nanoid(10);
+  const created = [];
+  const skipped = [];
+  for (const date of dates) {
+    const block = createBlock({ courtId, date, hour, reason, seriesId });
+    if (block) created.push(block);
+    else skipped.push(date);
+  }
+  const sortedDates = [...dates].sort();
+  const series = {
+    id: seriesId,
+    courtId,
+    hour,
+    reason: reason || "",
+    dates: sortedDates,
+    lastDate: sortedDates[sortedDates.length - 1],
+    createdAt: Date.now(),
+    alerted: false,
+  };
+  blockSeries.push(series);
+  return { series, created, skipped };
+}
+
+// Series cuyo último turno bloqueado ya es hoy (o quedó atrás) y todavía no
+// se avisó por mail. La usa el job de alertas.
+export function listSeriesNeedingAlert() {
+  const { date: today } = nowInClubTimezone();
+  return blockSeries.filter((s) => !s.alerted && s.lastDate <= today);
+}
+
+export function markSeriesAlerted(id) {
+  const series = blockSeries.find((s) => s.id === id);
+  if (series) series.alerted = true;
 }
 
 export function isSlotTaken(courtId, date, hour) {

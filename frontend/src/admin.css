@@ -91,3 +91,33 @@
   display: inline-block;
   margin-right: 6px;
 }
+
+.admin-field-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--chalk-dim);
+  margin: 14px 0 6px;
+}
+
+.admin-weekdays {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.admin-weekday {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(243, 239, 226, 0.2);
+  background: transparent;
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+.admin-weekday.selected {
+  background: var(--flood);
+  color: #25200a;
+  border-color: var(--flood);
+}
