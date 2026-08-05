@@ -103,6 +103,26 @@ export default function Admin() {
   const [bulkResult, setBulkResult] = useState(null);
   const [bulkError, setBulkError] = useState(null);
 
+  const [checkingAlerts, setCheckingAlerts] = useState(false);
+  const [alertCheckResult, setAlertCheckResult] = useState(null);
+
+  const runAlertCheck = async () => {
+    setCheckingAlerts(true);
+    setAlertCheckResult(null);
+    try {
+      const r = await adminApi.checkAlertsNow(token);
+      setAlertCheckResult(
+        r.alertsSent > 0
+          ? `Se mandaron ${r.alertsSent} mail${r.alertsSent === 1 ? "" : "s"} de alerta.`
+          : "No había ninguna serie pendiente de aviso en este momento."
+      );
+    } catch (err) {
+      setAlertCheckResult(`Error: ${err.message}`);
+    } finally {
+      setCheckingAlerts(false);
+    }
+  };
+
   const loadSchedule = useCallback(() => {
     if (!token) return;
     setLoading(true);
@@ -245,9 +265,15 @@ export default function Admin() {
           <button className="btn btn-primary" onClick={openBulk} style={{ marginRight: 10 }}>
             Bloquear varios turnos
           </button>
+          <button className="btn btn-outline" onClick={runAlertCheck} style={{ marginRight: 10 }} disabled={checkingAlerts}>
+            {checkingAlerts ? "Revisando…" : "Revisar alertas ahora"}
+          </button>
           <button className="btn btn-ghost" onClick={logout}>
             Salir
           </button>
+          {alertCheckResult && (
+            <p style={{ fontSize: 12.5, color: "var(--chalk-dim)", marginTop: 10 }}>{alertCheckResult}</p>
+          )}
         </div>
       </div>
 

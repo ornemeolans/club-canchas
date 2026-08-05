@@ -39,4 +39,6 @@ export const adminApi = {
     }),
   removeBlock: (id, token) =>
     request(`/admin/blocks/${id}`, { method: "DELETE", headers: { "x-admin-token": token } }),
+  checkAlertsNow: (token) =>
+    request("/admin/check-alerts", { method: "POST", headers: { "x-admin-token": token } }),
 };

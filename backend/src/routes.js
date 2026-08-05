@@ -18,6 +18,7 @@ import {
 import { createPaymentPreference, getPayment, searchApprovedPaymentByReference, isValidWebhookSignature } from "./mercadopago.js";
 import { sendWhatsAppConfirmation } from "./whatsapp.js";
 import { appendReservationRow } from "./sheets.js";
+import { checkSeries } from "./alerts.js";
 
 // Confirma una reserva a partir de un pago aprobado, y dispara todo lo que
 // tiene que pasar solo: marcar el turno, mandar WhatsApp, actualizar la
@@ -259,6 +260,14 @@ router.delete("/admin/blocks/:id", requireAdmin, (req, res) => {
   const removed = removeBlock(req.params.id);
   if (!removed) return res.status(404).json({ error: "Bloqueo no encontrado" });
   res.status(204).end();
+});
+
+// Forzar el chequeo de "¿alguna serie de bloqueos llegó a su último turno?"
+// ya mismo, sin esperar el ciclo de 1 hora. Útil para probar el mail sin
+// tener que reiniciar el servidor (reiniciar borra los datos en memoria).
+router.post("/admin/check-alerts", requireAdmin, async (req, res) => {
+  const sent = await checkSeries();
+  res.json({ checked: true, alertsSent: sent });
 });
 
 export default router;

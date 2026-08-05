@@ -8,7 +8,7 @@ import { sendAdminAlert } from "./email.js";
 
 const CHECK_EVERY_MS = 60 * 60 * 1000; // cada 1 hora alcanza — no hace falta más seguido
 
-async function checkSeries() {
+export async function checkSeries() {
   const pending = listSeriesNeedingAlert();
   for (const series of pending) {
     const found = findCourt(series.courtId);
@@ -25,6 +25,7 @@ async function checkSeries() {
     await sendAdminAlert(subject, text);
     markSeriesAlerted(series.id);
   }
+  return pending.length;
 }
 
 export function startBlockSeriesAlertJob() {
