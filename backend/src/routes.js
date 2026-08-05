@@ -253,6 +253,11 @@ router.post("/admin/blocks/bulk", requireAdmin, (req, res) => {
     createdCount: created.length,
     skippedDates: skipped, // fechas que ya estaban ocupadas y no se pudieron bloquear
   });
+
+  // Si el último turno de esta tanda ya es hoy (por ejemplo, un bloqueo de
+  // un solo día), no hace falta esperar el próximo ciclo de 1 hora — se
+  // revisa ya mismo. No bloquea la respuesta al admin.
+  checkSeries().catch((err) => console.error("[alerts] Error en el chequeo inmediato:", err.message));
 });
 
 // Sacar un bloqueo (volver a habilitar ese horario para reservar).
@@ -260,14 +265,6 @@ router.delete("/admin/blocks/:id", requireAdmin, (req, res) => {
   const removed = removeBlock(req.params.id);
   if (!removed) return res.status(404).json({ error: "Bloqueo no encontrado" });
   res.status(204).end();
-});
-
-// Forzar el chequeo de "¿alguna serie de bloqueos llegó a su último turno?"
-// ya mismo, sin esperar el ciclo de 1 hora. Útil para probar el mail sin
-// tener que reiniciar el servidor (reiniciar borra los datos en memoria).
-router.post("/admin/check-alerts", requireAdmin, async (req, res) => {
-  const sent = await checkSeries();
-  res.json({ checked: true, alertsSent: sent });
 });
 
 export default router;
