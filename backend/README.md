@@ -200,13 +200,33 @@ Desde ahí se puede:
 ### Alerta por mail al llegar al último turno bloqueado
 
 Cuando la fecha del **último** turno de una de esas series llega (o ya
-pasó), un job que corre cada una hora (`src/alerts.js`) manda un mail al
-dueño del club avisando — para que decida si carga más fechas (la clase
-sigue) o no hace nada y el horario queda libre para alquilar de nuevo
-automáticamente. Necesita las variables `EMAIL_*` del `.env` (cualquier
-servidor SMTP sirve, ver `.env.example` para un ejemplo con Gmail). Sin esas
-variables cargadas, el resto del sistema sigue funcionando igual — sólo no
-se manda el mail (se avisa por log).
+pasó), se manda un mail al dueño del club avisando — para que decida si
+carga más fechas (la clase sigue) o no hace nada y el horario queda libre
+para alquilar de nuevo automáticamente. Esto pasa solo, sin que nadie tenga
+que revisar nada: al crear el bloqueo (si el último turno ya es hoy) y
+además cada 1 hora (`src/alerts.js`), por si el último turno de una serie
+programada a futuro llega mientras nadie está mirando.
+
+**Por qué por Resend y no por SMTP directo (Gmail, etc.):** desde septiembre
+de 2025, Render bloquea las conexiones SMTP salientes en los servicios del
+plan gratis (puertos 25, 465 y 587) — es una política de la plataforma
+contra spam, no depende de las credenciales que uses. Por eso el mail se
+manda por la API HTTP de [Resend](https://resend.com) en vez de SMTP: viaja
+por HTTPS, que no está bloqueado.
+
+Para configurarlo:
+1. Creá una cuenta gratis en [resend.com](https://resend.com) (no pide
+   tarjeta).
+2. En su panel, sacá una **API key** → `RESEND_API_KEY`.
+3. Mientras no verifiques un dominio propio, usá `EMAIL_FROM=onboarding@resend.dev`
+   tal cual — es el remitente de prueba que da Resend.
+4. `EMAIL_TO`: **en el plan gratis sin dominio verificado, Resend sólo
+   entrega a la misma dirección con la que te registraste** en su cuenta —
+   usá esa. Si más adelante verificás un dominio propio en Resend, vas a
+   poder mandar a cualquier destinatario.
+
+Sin estas variables cargadas, el resto del sistema sigue funcionando
+igual — sólo no se manda el mail (se avisa por log).
 
 ## Nota sobre el store
 
