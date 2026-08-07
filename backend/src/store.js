@@ -48,11 +48,15 @@ function toMinutesSinceEpoch(date, hour, minute = 0) {
 
 // Un turno ya no se puede reservar si es de un día anterior a hoy, o si
 // falta menos de BOOKING_CUTOFF_MINUTES para que empiece (o ya empezó).
+// Se usa "<=" y no "<": como nowInClubTimezone() sólo tiene precisión de
+// minuto (sin segundos), "ahora" puede estar hasta 59s adelantado respecto
+// del minuto que se lee — con "<" el turno quedaba visible todo ese último
+// minuto antes de cumplirse el corte real de 15 minutos.
 export function isPastSlot(date, hour) {
   const now = nowInClubTimezone();
   const nowMinutes = toMinutesSinceEpoch(now.date, now.hour, now.minute);
   const slotMinutes = toMinutesSinceEpoch(date, hour);
-  return slotMinutes - nowMinutes < BOOKING_CUTOFF_MINUTES;
+  return slotMinutes - nowMinutes <= BOOKING_CUTOFF_MINUTES;
 }
 
 export const SPORTS = {

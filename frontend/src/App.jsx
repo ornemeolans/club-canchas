@@ -68,7 +68,8 @@ function isPastSlot(dateKey, hour) {
   const now = nowInClubTimezone();
   const nowMinutes = toMinutesSinceEpoch(now.date, now.hour, now.minute);
   const slotMinutes = toMinutesSinceEpoch(dateKey, hour);
-  return slotMinutes - nowMinutes < BOOKING_CUTOFF_MINUTES;
+  // "<=" y no "<": ver el comentario equivalente en store.js (backend).
+  return slotMinutes - nowMinutes <= BOOKING_CUTOFF_MINUTES;
 }
 
 // Los deportes/canchas/horarios prácticamente no cambian — se conocen de
