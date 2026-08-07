@@ -206,7 +206,7 @@ export default function Admin() {
 
   if (!token) {
     return (
-      <div className="app admin-login">
+      <main className="app admin-login">
         <style>{`.admin-login{display:flex;align-items:center;justify-content:center;min-height:100vh;}`}</style>
         <form className="admin-login-card" onSubmit={submitToken}>
           <div className="eyebrow">Club Canchas — Admin</div>
@@ -226,12 +226,12 @@ export default function Admin() {
             Entrar
           </button>
         </form>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="app">
+    <main className="app">
       <div className="hero admin-hero">
         <div className="hero-inner">
           <div className="eyebrow">Panel de administrador</div>
@@ -483,6 +483,6 @@ export default function Admin() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -3,11 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
+    <meta
+      name="description"
+      content="Reservá tu cancha de fútbol o tenis online. Elegí día y horario, pagá por transferencia con Mercado Pago y quedá confirmado al instante."
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Arranca la conexión con el backend antes de que el JS haga el
+         primer pedido — ahorra el tiempo de DNS/TLS de esa primera
+         llamada. Si cambia la URL del backend, actualizar acá también. -->
+    <link rel="preconnect" href="https://club-canchas.onrender.com" />
+    <!-- La hoja de estilos de Google Fonts se carga sin bloquear el primer
+         render: se precarga como "style" y recién se aplica como
+         stylesheet cuando termina de bajar. -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"
+      />
+    </noscript>
     <title>Club Canchas — Reservas</title>
   </head>
   <body>

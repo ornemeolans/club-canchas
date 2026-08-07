@@ -1,0 +1,12 @@
+# Club Canchas
+
+Sitio de reservas online para un club con canchas de fútbol y tenis.
+
+## Qué se puede hacer acá
+- Ver disponibilidad de 2 canchas de fútbol y 2 de tenis, todos los días de 9:00 a 22:00, en turnos de 1 hora.
+- Reservar un turno y pagarlo por transferencia a través de Mercado Pago.
+- La confirmación del turno es automática una vez acreditado el pago.
+
+## Notas
+- No hay listados de precios ni de disponibilidad indexables de forma estática: los horarios cambian en tiempo real según las reservas existentes.
+- La sección /admin es privada, de uso exclusivo del club, y no forma parte del contenido público del sitio.

@@ -57,23 +57,41 @@ function isPastSlot(dateKey, hour) {
   return hour <= now.hour;
 }
 
-// Se usa como placeholder mientras /api/config todavía no respondió.
-const FALLBACK_SPORTS = {
-  futbol: { label: "Fútbol", price: 0, courts: [] },
-  tenis: { label: "Tenis", price: 0, courts: [] },
+// Los deportes/canchas/horarios prácticamente no cambian — se conocen de
+// entrada, así la grilla se puede mostrar apenas carga la página, sin
+// esperar la ida y vuelta a /api/config. Ese pedido sigue haciéndose en
+// segundo plano (por si el precio u otra cosa cambió), pero ya no bloquea
+// el primer render.
+const DEFAULT_SPORTS = {
+  futbol: {
+    label: "Fútbol",
+    price: 12000,
+    courts: [
+      { id: "f1", name: "Cancha de Fútbol 1" },
+      { id: "f2", name: "Cancha de Fútbol 2" },
+    ],
+  },
+  tenis: {
+    label: "Tenis",
+    price: 9000,
+    courts: [
+      { id: "t1", name: "Cancha de Tenis 1" },
+      { id: "t2", name: "Cancha de Tenis 2" },
+    ],
+  },
 };
+const DEFAULT_HOURS = Array.from({ length: 13 }, (_, i) => 9 + i);
 
 export default function App() {
   const days = useMemo(() => nextDays(7), []);
   const dateKeys = useMemo(() => days.map(fmtDateKey), [days]);
 
-  const [sports, setSports] = useState(FALLBACK_SPORTS);
-  const [hours, setHours] = useState([]);
-  const [configLoaded, setConfigLoaded] = useState(false);
+  const [sports, setSports] = useState(DEFAULT_SPORTS);
+  const [hours, setHours] = useState(DEFAULT_HOURS);
   const [configError, setConfigError] = useState(null);
 
   const [sport, setSport] = useState("futbol");
-  const [courtId, setCourtId] = useState(null);
+  const [courtId, setCourtId] = useState("f1");
   const [dateIdx, setDateIdx] = useState(0);
   const [takenHours, setTakenHours] = useState([]);
 
@@ -93,21 +111,23 @@ export default function App() {
   const pollRef = useRef(null);
   const tickRef = useRef(null);
 
-  const sportDef = sports[sport] || FALLBACK_SPORTS[sport];
+  const sportDef = sports[sport] || DEFAULT_SPORTS[sport];
   const court = sportDef.courts.find((c) => c.id === courtId) || null;
   const dateKey = dateKeys[dateIdx];
 
-  // ---- Carga inicial: config + si venimos de vuelta del checkout de MP ----
+  // ---- Carga inicial: config en segundo plano (ya no bloquea el primer
+  // render — la grilla usa los valores por defecto de entrada) + si venimos
+  // de vuelta del checkout de MP ----
   useEffect(() => {
     api
       .getConfig()
       .then((cfg) => {
         setSports(cfg.sports);
         setHours(cfg.hours);
-        const firstSport = Object.keys(cfg.sports)[0];
-        setSport(firstSport);
-        setCourtId(cfg.sports[firstSport].courts[0]?.id || null);
-        setConfigLoaded(true);
+        // Ojo: no se pisa `sport`/`courtId` acá — si el visitante ya venía
+        // interactuando con la grilla (con los valores por defecto) antes
+        // de que esto responda, forzarlos de vuelta al primero sería un
+        // mal salto de UI.
       })
       .catch((err) => setConfigError(err.message));
 
@@ -304,16 +324,11 @@ export default function App() {
   };
 
   if (configError) {
-    return (
-      <div className="app" style={{ padding: 40 }}>
-        No se pudo conectar con el backend ({configError}). Revisá que esté
-        corriendo y que VITE_API_URL apunte ahí.
-      </div>
-    );
+    console.error("No se pudo sincronizar /api/config:", configError);
   }
 
   return (
-    <div className="app">
+    <main className="app">
       <div className="hero">
         <div className="hero-inner">
           <div className="eyebrow">9:00 — 22:00 · turnos de 1 hora</div>
@@ -368,27 +383,23 @@ export default function App() {
           </div>
 
           <div className="board">
-            {!configLoaded ? (
-              <p className="section-sub">Cargando disponibilidad…</p>
-            ) : (
-              <div className="slot-grid">
-                {hours
-                  .filter((h) => !isPastSlot(dateKey, h))
-                  .map((h) => {
-                    const taken = takenHours.includes(h);
-                    return (
-                      <div key={h} className={`slot ${taken ? "taken" : ""}`} onClick={() => !taken && openForm(h)}>
-                        {String(h).padStart(2, "0")}:00
-                      </div>
-                    );
-                  })}
-                {hours.filter((h) => !isPastSlot(dateKey, h)).length === 0 && (
-                  <p className="section-sub" style={{ margin: 0 }}>
-                    No quedan horarios disponibles hoy.
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="slot-grid">
+              {hours
+                .filter((h) => !isPastSlot(dateKey, h))
+                .map((h) => {
+                  const taken = takenHours.includes(h);
+                  return (
+                    <div key={h} className={`slot ${taken ? "taken" : ""}`} onClick={() => !taken && openForm(h)}>
+                      {String(h).padStart(2, "0")}:00
+                    </div>
+                  );
+                })}
+              {hours.filter((h) => !isPastSlot(dateKey, h)).length === 0 && (
+                <p className="section-sub" style={{ margin: 0 }}>
+                  No quedan horarios disponibles hoy.
+                </p>
+              )}
+            </div>
           </div>
         </section>
       )}
@@ -523,6 +534,6 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
