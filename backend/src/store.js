@@ -221,6 +221,7 @@ export function getCourtSchedule(courtId, date) {
       hours.push({
         hour,
         status: "reserved",
+        reservationId: reservation.id,
         clientName: reservation.clientName,
         clientPhone: reservation.clientPhone,
         amount: reservation.amount,
@@ -332,6 +333,62 @@ export function listReservations() {
 
 export function getReservation(id) {
   return reservations.find((r) => r.id === id) || null;
+}
+
+// Baja de una reserva confirmada, hecha por el admin (a pedido del
+// cliente, por ejemplo). Libera el horario: al sacarla de `reservations`,
+// vuelve a aparecer como disponible.
+export function cancelReservation(id) {
+  const idx = reservations.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  const [removed] = reservations.splice(idx, 1);
+  return removed;
+}
+
+// Modifica cancha/fecha/hora de una reserva confirmada. Sólo cambia lo que
+// se pasa (lo demás queda como estaba). Devuelve { reservation, previous }
+// si salió bien, o { error } si no: "not_found", "invalid_court" (cancha
+// inexistente), "past" (el nuevo horario ya pasó o falta menos del margen
+// mínimo) u "taken" (el nuevo horario ya está ocupado por otra cosa).
+export function updateReservation(id, { courtId, date, hour } = {}) {
+  const idx = reservations.findIndex((r) => r.id === id);
+  if (idx === -1) return { error: "not_found" };
+  const current = reservations[idx];
+
+  const nextCourtId = courtId || current.courtId;
+  const nextDate = date || current.date;
+  const nextHour = hour != null ? Number(hour) : current.hour;
+
+  const found = findCourt(nextCourtId);
+  if (!found) return { error: "invalid_court" };
+
+  const sameSlot =
+    nextCourtId === current.courtId && nextDate === current.date && nextHour === current.hour;
+
+  // Sólo se valida disponibilidad/horario si de verdad se está moviendo el
+  // turno a otro lado — si no cambia nada, no tiene sentido chocar contra
+  // su propio horario actual.
+  if (!sameSlot) {
+    if (isPastSlot(nextDate, nextHour)) return { error: "past" };
+    if (isSlotTaken(nextCourtId, nextDate, nextHour)) return { error: "taken" };
+  }
+
+  const previous = {
+    courtId: current.courtId,
+    courtName: current.courtName,
+    date: current.date,
+    hour: current.hour,
+  };
+
+  current.courtId = nextCourtId;
+  current.courtName = found.court.name;
+  current.sportLabel = found.sport.label;
+  current.date = nextDate;
+  current.hour = nextHour;
+  current.amount = found.sport.price;
+  current.updatedAt = new Date().toISOString();
+
+  return { reservation: current, previous };
 }
 
 // Limpieza periódica de holds vencidos.

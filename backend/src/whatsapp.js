@@ -26,18 +26,38 @@ function normalizePhone(phone) {
   return digits;
 }
 
-export async function sendWhatsAppConfirmation(reservation) {
+async function sendWhatsAppMessage(phone, payload, { logLabel }) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!token || !phoneNumberId) {
-    console.warn("[whatsapp] Faltan WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID, no se envía el mensaje.");
+    console.warn(`[whatsapp] Faltan WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID, no se envía "${logLabel}".`);
     return { skipped: true };
   }
-  if (!reservation.clientPhone) {
-    console.warn(`[whatsapp] Reserva ${reservation.id} sin teléfono, no se envía el mensaje.`);
+  if (!phone) {
+    console.warn(`[whatsapp] Sin teléfono, no se envía "${logLabel}".`);
     return { skipped: true };
   }
 
+  const res = await fetch(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: phone, ...payload }),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) {
+    console.error(`[whatsapp] Error enviando "${logLabel}":`, data);
+  }
+  return data;
+}
+
+export async function sendWhatsAppConfirmation(reservation) {
   const to = normalizePhone(reservation.clientPhone);
   const hour = `${String(reservation.hour).padStart(2, "0")}:00`;
   const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
@@ -49,8 +69,6 @@ export async function sendWhatsAppConfirmation(reservation) {
   // Meta — ver la sugerencia de texto en el README del backend.
   const payload = templateName
     ? {
-        messaging_product: "whatsapp",
-        to,
         type: "template",
         template: {
           name: templateName,
@@ -79,8 +97,6 @@ export async function sendWhatsAppConfirmation(reservation) {
         },
       }
     : {
-        messaging_product: "whatsapp",
-        to,
         type: "text",
         text: {
           body:
@@ -91,21 +107,91 @@ export async function sendWhatsAppConfirmation(reservation) {
         },
       };
 
-  const res = await fetch(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
+  return sendWhatsAppMessage(to, payload, { logLabel: `confirmación ${reservation.id}` });
+}
 
-  const data = await res.json();
-  if (!res.ok) {
-    console.error("[whatsapp] Error enviando mensaje:", data);
-  }
-  return data;
+// Aviso de baja de un turno, disparado cuando el admin cancela una reserva
+// ya confirmada. Igual que con la confirmación: si hay una plantilla
+// aprobada configurada (WHATSAPP_CANCEL_TEMPLATE_NAME) se manda como
+// "template" (funciona aunque hayan pasado más de 24hs desde el último
+// mensaje del cliente); si no, se manda como texto libre, que sólo llega si
+// el cliente le escribió al número del club en las últimas 24hs.
+export async function sendWhatsAppCancellation(reservation, { reason } = {}) {
+  const to = normalizePhone(reservation.clientPhone);
+  const hour = `${String(reservation.hour).padStart(2, "0")}:00`;
+  const templateName = process.env.WHATSAPP_CANCEL_TEMPLATE_NAME;
+
+  const payload = templateName
+    ? {
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "es_AR" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: reservation.courtName },
+                { type: "text", text: reservation.date },
+                { type: "text", text: hour },
+              ],
+            },
+          ],
+        },
+      }
+    : {
+        type: "text",
+        text: {
+          body:
+            `Turno cancelado ❌\n` +
+            `${reservation.courtName}, ${reservation.date} a las ${hour}.\n` +
+            (reason ? `Motivo: ${reason}\n` : "") +
+            `Cualquier duda, escribinos por acá.`,
+        },
+      };
+
+  return sendWhatsAppMessage(to, payload, { logLabel: `cancelación ${reservation.id}` });
+}
+
+// Aviso de cambio de horario/cancha, disparado cuando el admin modifica una
+// reserva ya confirmada. `previous` trae los datos de antes del cambio.
+export async function sendWhatsAppModification(reservation, previous) {
+  const to = normalizePhone(reservation.clientPhone);
+  const newHour = `${String(reservation.hour).padStart(2, "0")}:00`;
+  const prevHour = `${String(previous.hour).padStart(2, "0")}:00`;
+  const templateName = process.env.WHATSAPP_MODIFY_TEMPLATE_NAME;
+
+  const payload = templateName
+    ? {
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "es_AR" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: previous.courtName },
+                { type: "text", text: previous.date },
+                { type: "text", text: prevHour },
+                { type: "text", text: reservation.courtName },
+                { type: "text", text: reservation.date },
+                { type: "text", text: newHour },
+              ],
+            },
+          ],
+        },
+      }
+    : {
+        type: "text",
+        text: {
+          body:
+            `Tu turno cambió 🔄\n` +
+            `Antes: ${previous.courtName}, ${previous.date} a las ${prevHour}.\n` +
+            `Ahora: ${reservation.courtName}, ${reservation.date} a las ${newHour}.\n` +
+            `Cualquier duda, escribinos por acá.`,
+        },
+      };
+
+  return sendWhatsAppMessage(to, payload, { logLabel: `modificación ${reservation.id}` });
 }

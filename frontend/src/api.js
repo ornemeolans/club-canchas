@@ -39,4 +39,16 @@ export const adminApi = {
     }),
   removeBlock: (id, token) =>
     request(`/admin/blocks/${id}`, { method: "DELETE", headers: { "x-admin-token": token } }),
+  cancelReservation: (id, reason, token) =>
+    request(`/admin/reservations/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": token },
+      body: JSON.stringify({ reason }),
+    }),
+  updateReservation: (id, payload, token) =>
+    request(`/admin/reservations/${id}`, {
+      method: "PATCH",
+      headers: { "x-admin-token": token },
+      body: JSON.stringify(payload),
+    }),
 };

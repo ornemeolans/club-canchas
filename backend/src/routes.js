@@ -10,13 +10,15 @@ import {
   confirmHold,
   listReservations,
   getReservation,
+  cancelReservation,
+  updateReservation,
   getCourtSchedule,
   createBlock,
   removeBlock,
   createBlockSeries,
 } from "./store.js";
 import { createPaymentPreference, getPayment, searchApprovedPaymentByReference, isValidWebhookSignature } from "./mercadopago.js";
-import { sendWhatsAppConfirmation } from "./whatsapp.js";
+import { sendWhatsAppConfirmation, sendWhatsAppCancellation, sendWhatsAppModification } from "./whatsapp.js";
 import { appendReservationRow } from "./sheets.js";
 import { checkSeries } from "./alerts.js";
 
@@ -201,6 +203,47 @@ router.get("/reservations/:id", (req, res) => {
   const reservation = getReservation(req.params.id);
   if (!reservation) return res.status(404).json({ error: "No encontrada" });
   res.json({ reservation });
+});
+
+// Baja de una reserva confirmada, a pedido del cliente. Libera el horario
+// y le avisa por WhatsApp. La notificación se manda después de responder
+// (no bloquea al admin esperando a que WhatsApp conteste), pero si falla
+// queda logueada en el server.
+router.delete("/admin/reservations/:id", requireAdmin, (req, res) => {
+  const reservation = getReservation(req.params.id);
+  if (!reservation) return res.status(404).json({ error: "No encontrada" });
+
+  const removed = cancelReservation(req.params.id);
+  if (!removed) return res.status(404).json({ error: "No encontrada" });
+
+  res.status(204).end();
+
+  sendWhatsAppCancellation(removed, { reason: req.body?.reason }).catch((err) =>
+    console.error(`[whatsapp] Error avisando cancelación de ${removed.id}:`, err)
+  );
+});
+
+// Modifica cancha/fecha/hora de una reserva confirmada, a pedido del
+// cliente. Le avisa por WhatsApp con el horario anterior y el nuevo.
+router.patch("/admin/reservations/:id", requireAdmin, (req, res) => {
+  const { courtId, date, hour } = req.body || {};
+  if (!courtId && !date && hour == null) {
+    return res.status(400).json({ error: "Nada para modificar (courtId, date, hour)" });
+  }
+
+  const result = updateReservation(req.params.id, { courtId, date, hour });
+  if (result.error === "not_found") return res.status(404).json({ error: "No encontrada" });
+  if (result.error === "invalid_court") return res.status(404).json({ error: "Cancha inexistente" });
+  if (result.error === "past") {
+    return res.status(409).json({ error: "Ese horario ya pasó o falta menos de 15 minutos" });
+  }
+  if (result.error === "taken") return res.status(409).json({ error: "Ese horario ya está ocupado" });
+
+  res.json({ reservation: result.reservation });
+
+  sendWhatsAppModification(result.reservation, result.previous).catch((err) =>
+    console.error(`[whatsapp] Error avisando modificación de ${result.reservation.id}:`, err)
+  );
 });
 
 // Vista de calendario para el administrador: todas las canchas de un

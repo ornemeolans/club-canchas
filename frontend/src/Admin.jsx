@@ -93,6 +93,19 @@ export default function Admin() {
   const [blockReason, setBlockReason] = useState("");
   const [detailSlot, setDetailSlot] = useState(null); // reserved slot detail popover
 
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCourtId, setEditCourtId] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editHour, setEditHour] = useState(HOURS[0]);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState(null);
+
+  const [actionError, setActionError] = useState(null);
+
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkCourtId, setBulkCourtId] = useState("");
   const [bulkHour, setBulkHour] = useState(HOURS[0]);
@@ -165,6 +178,62 @@ export default function Admin() {
       loadSchedule();
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetailSlot(null);
+    setCancelConfirmOpen(false);
+    setEditOpen(false);
+    setActionError(null);
+  };
+
+  const openCancelConfirm = () => {
+    setCancelReason("");
+    setActionError(null);
+    setCancelConfirmOpen(true);
+  };
+
+  const confirmCancel = async () => {
+    if (!detailSlot) return;
+    setCancelBusy(true);
+    setActionError(null);
+    try {
+      await adminApi.cancelReservation(detailSlot.reservationId, cancelReason.trim(), token);
+      closeDetail();
+      loadSchedule();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
+  const openEdit = () => {
+    if (!detailSlot) return;
+    setEditCourtId(detailSlot.courtId);
+    setEditDate(detailSlot.date);
+    setEditHour(detailSlot.hour);
+    setEditError(null);
+    setEditOpen(true);
+  };
+
+  const submitEdit = async () => {
+    if (!detailSlot) return;
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      await adminApi.updateReservation(
+        detailSlot.reservationId,
+        { courtId: editCourtId, date: editDate, hour: Number(editHour) },
+        token
+      );
+      closeDetail();
+      loadSchedule();
+    } catch (err) {
+      setEditError(err.message);
+    } finally {
+      setEditBusy(false);
     }
   };
 
@@ -292,7 +361,12 @@ export default function Admin() {
                       } else if (slot.status === "blocked") {
                         unblock(slot.blockId);
                       } else if (slot.status === "reserved") {
-                        setDetailSlot({ ...slot, courtName: court.courtName });
+                        setDetailSlot({
+                          ...slot,
+                          courtId: court.courtId,
+                          courtName: court.courtName,
+                          date: dateKey,
+                        });
                       }
                     }}
                     title={
@@ -359,8 +433,8 @@ export default function Admin() {
         </div>
       )}
 
-      {detailSlot && (
-        <div className="hold-overlay" onClick={() => setDetailSlot(null)}>
+      {detailSlot && !cancelConfirmOpen && !editOpen && (
+        <div className="hold-overlay" onClick={closeDetail}>
           <div className="hold-card" onClick={(e) => e.stopPropagation()}>
             <div className="eyebrow">Turno reservado</div>
             <div className="row">
@@ -383,9 +457,103 @@ export default function Admin() {
               <span>Monto</span>
               <b>${detailSlot.amount?.toLocaleString("es-AR")}</b>
             </div>
-            <button className="btn btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={() => setDetailSlot(null)}>
-              Cerrar
-            </button>
+            {actionError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{actionError}</p>}
+            <div className="hold-actions" style={{ flexWrap: "wrap" }}>
+              <button className="btn btn-ghost" onClick={closeDetail}>
+                Cerrar
+              </button>
+              <button className="btn btn-ghost" onClick={openEdit}>
+                Modificar
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ background: "var(--danger)", borderColor: "var(--danger)" }}
+                onClick={openCancelConfirm}
+              >
+                Cancelar reserva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailSlot && cancelConfirmOpen && (
+        <div className="hold-overlay" onClick={() => setCancelConfirmOpen(false)}>
+          <div className="hold-card" onClick={(e) => e.stopPropagation()}>
+            <div className="eyebrow">Cancelar reserva</div>
+            <p style={{ fontSize: 12.5, color: "var(--chalk-dim)", marginTop: 0 }}>
+              Se libera el horario ({detailSlot.courtName}, {detailSlot.date} a las{" "}
+              {String(detailSlot.hour).padStart(2, "0")}:00) y se le avisa a {detailSlot.clientName} por
+              WhatsApp.
+            </p>
+            <input
+              className="input"
+              placeholder="Motivo (opcional, va en el mensaje al cliente)"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              autoFocus
+            />
+            {actionError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{actionError}</p>}
+            <div className="hold-actions">
+              <button className="btn btn-ghost" onClick={() => setCancelConfirmOpen(false)} disabled={cancelBusy}>
+                Volver
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ background: "var(--danger)", borderColor: "var(--danger)" }}
+                onClick={confirmCancel}
+                disabled={cancelBusy}
+              >
+                {cancelBusy ? "Cancelando…" : "Confirmar cancelación"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailSlot && editOpen && (
+        <div className="hold-overlay" onClick={() => setEditOpen(false)}>
+          <div className="hold-card" onClick={(e) => e.stopPropagation()}>
+            <div className="eyebrow">Modificar turno</div>
+            <p style={{ fontSize: 12.5, color: "var(--chalk-dim)", marginTop: 0 }}>
+              Se le avisa a {detailSlot.clientName} por WhatsApp con el horario anterior y el nuevo.
+            </p>
+
+            <label className="admin-field-label">Cancha</label>
+            <select className="input" value={editCourtId} onChange={(e) => setEditCourtId(e.target.value)}>
+              {courts.map((c) => (
+                <option key={c.courtId} value={c.courtId}>
+                  {c.courtName} — {c.sportLabel}
+                </option>
+              ))}
+            </select>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label className="admin-field-label">Fecha</label>
+                <input className="input" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="admin-field-label">Horario</label>
+                <select className="input" value={editHour} onChange={(e) => setEditHour(e.target.value)}>
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, "0")}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {editError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{editError}</p>}
+            <div className="hold-actions">
+              <button className="btn btn-ghost" onClick={() => setEditOpen(false)} disabled={editBusy}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary" onClick={submitEdit} disabled={editBusy}>
+                {editBusy ? "Guardando…" : "Guardar cambios"}
+              </button>
+            </div>
           </div>
         </div>
       )}
