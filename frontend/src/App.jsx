@@ -14,10 +14,17 @@ function clubNowParts() {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
+    minute: "2-digit",
     hour12: false,
   }).formatToParts(new Date());
   const get = (type) => Number(parts.find((p) => p.type === type)?.value);
-  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour") };
+  return {
+    year: get("year"),
+    month: get("month"),
+    day: get("day"),
+    hour: get("hour"),
+    minute: get("minute"),
+  };
 }
 
 // Cada elemento representa una fecha de calendario (no un instante), anclada
@@ -46,15 +53,22 @@ function fmtDateLabel(d) {
 }
 
 function nowInClubTimezone() {
-  const { year, month, day, hour } = clubNowParts();
+  const { year, month, day, hour, minute } = clubNowParts();
   const pad = (n) => String(n).padStart(2, "0");
-  return { date: `${year}-${pad(month)}-${pad(day)}`, hour };
+  return { date: `${year}-${pad(month)}-${pad(day)}`, hour, minute };
+}
+// No se puede reservar un turno si empieza en menos de este margen.
+// Tiene que coincidir con BOOKING_CUTOFF_MINUTES del backend (store.js).
+const BOOKING_CUTOFF_MINUTES = 15;
+function toMinutesSinceEpoch(dateKey, hour, minute = 0) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Date.UTC(year, month - 1, day, hour, minute) / 60000;
 }
 function isPastSlot(dateKey, hour) {
   const now = nowInClubTimezone();
-  if (dateKey < now.date) return true;
-  if (dateKey > now.date) return false;
-  return hour <= now.hour;
+  const nowMinutes = toMinutesSinceEpoch(now.date, now.hour, now.minute);
+  const slotMinutes = toMinutesSinceEpoch(dateKey, hour);
+  return slotMinutes - nowMinutes < BOOKING_CUTOFF_MINUTES;
 }
 
 // Los deportes/canchas/horarios prácticamente no cambian — se conocen de

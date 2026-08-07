@@ -16,6 +16,9 @@ const PAYMENT_GRACE_MS = PAYMENT_GRACE_MINUTES * 60 * 1000;
 // si el club está en otra provincia con huso distinto.
 const CLUB_TIMEZONE = "America/Argentina/Buenos_Aires";
 
+// No se puede reservar un turno si empieza en menos de este margen.
+const BOOKING_CUTOFF_MINUTES = 15;
+
 function nowInClubTimezone() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: CLUB_TIMEZONE,
@@ -23,19 +26,33 @@ function nowInClubTimezone() {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
+    minute: "2-digit",
     hour12: false,
   }).formatToParts(new Date());
   const get = (type) => parts.find((p) => p.type === type)?.value;
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) };
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    hour: Number(get("hour")),
+    minute: Number(get("minute")),
+  };
 }
 
-// Un turno "ya pasó" si es de un día anterior a hoy, o si es hoy y la hora
-// de inicio ya llegó o quedó atrás.
+// Minutos transcurridos desde una referencia arbitraria pero común, sólo
+// para poder restar fechas/horas entre sí. Como tanto "ahora" como el
+// turno se calculan con la misma zona horaria del club, la diferencia da
+// bien aunque tratemos los campos como si fueran UTC.
+function toMinutesSinceEpoch(date, hour, minute = 0) {
+  const [year, month, day] = date.split("-").map(Number);
+  return Date.UTC(year, month - 1, day, hour, minute) / 60000;
+}
+
+// Un turno ya no se puede reservar si es de un día anterior a hoy, o si
+// falta menos de BOOKING_CUTOFF_MINUTES para que empiece (o ya empezó).
 export function isPastSlot(date, hour) {
   const now = nowInClubTimezone();
-  if (date < now.date) return true;
-  if (date > now.date) return false;
-  return hour <= now.hour;
+  const nowMinutes = toMinutesSinceEpoch(now.date, now.hour, now.minute);
+  const slotMinutes = toMinutesSinceEpoch(date, hour);
+  return slotMinutes - nowMinutes < BOOKING_CUTOFF_MINUTES;
 }
 
 export const SPORTS = {
