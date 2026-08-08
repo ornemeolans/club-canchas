@@ -321,6 +321,12 @@ export default function App() {
       "PRODID:-//Club Canchas//Reservas//ES",
       "BEGIN:VEVENT",
       `UID:${reservation.id}@club-canchas`,
+      // Mismo UID siempre, y SEQUENCE que sube con cada modificación: así,
+      // si el cliente ya había agregado el turno a un calendario que
+      // respeta el estándar (Outlook, Apple Calendar), al descargar de
+      // nuevo el .ics se lo ofrece como "actualizar evento" en vez de
+      // duplicarlo. Google Calendar web no siempre lo respeta.
+      `SEQUENCE:${reservation.updateCount || 0}`,
       `DTSTAMP:${fmt(new Date())}`,
       `DTSTART:${fmt(start)}`,
       `DTEND:${fmt(end)}`,
@@ -525,18 +531,31 @@ export default function App() {
       {step === "confirmed" && reservation && (
         <div className="hold-overlay">
           <div className="hold-card">
-            <div className="badge-ok">✓ Pago acreditado</div>
-            <h3 className="display" style={{ fontSize: 30, margin: "8px 0 16px" }}>Turno confirmado</h3>
+            <div className="badge-ok">{reservation.updateCount ? "✓ Turno actualizado" : "✓ Pago acreditado"}</div>
+            <h3 className="display" style={{ fontSize: 30, margin: "8px 0 16px" }}>
+              {reservation.updateCount ? "Turno modificado" : "Turno confirmado"}
+            </h3>
             <div className="confirm-wrap">
               <div className="wa-bubble">
                 <div className="wa-head">● WhatsApp — Club Canchas</div>
                 <div className="wa-msg">
-                  ¡Turno confirmado! 🎾⚽<br />
+                  {reservation.updateCount ? (
+                    <>Tu turno cambió 🔄</>
+                  ) : (
+                    <>¡Turno confirmado! 🎾⚽</>
+                  )}
+                  <br />
                   {reservation.courtName}, {reservation.date} a las {String(reservation.hour).padStart(2, "0")}:00.
                 </div>
               </div>
               <div className="cal-card">
-                <h4>Agregalo a tu calendario</h4>
+                <h4>{reservation.updateCount ? "Actualizá tu calendario" : "Agregalo a tu calendario"}</h4>
+                {reservation.updateCount > 0 && (
+                  <p style={{ fontSize: 12.5, color: "var(--chalk-dim)", margin: "0 0 10px" }}>
+                    Si ya lo habías agregado, esto lo actualiza en Outlook o Apple Calendar. En Google
+                    Calendar puede que tengas que borrar a mano el evento con el horario viejo.
+                  </p>
+                )}
                 <a href={gcalUrl} target="_blank" rel="noreferrer" className="btn btn-outline">+ Google Calendar</a>
                 <button onClick={downloadIcs} className="btn btn-ghost" style={{ marginTop: 8 }}>
                   Descargar .ics

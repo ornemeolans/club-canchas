@@ -189,6 +189,7 @@ export async function sendWhatsAppModification(reservation, previous) {
             `Tu turno cambió 🔄\n` +
             `Antes: ${previous.courtName}, ${previous.date} a las ${prevHour}.\n` +
             `Ahora: ${reservation.courtName}, ${reservation.date} a las ${newHour}.\n` +
+            `Te esperamos, 10 minutos antes de tu nuevo turno. \n` +
             `Cualquier duda, escribinos por acá.`,
         },
       };
