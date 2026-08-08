@@ -120,13 +120,26 @@ export async function sendWhatsAppCancellation(reservation, { reason } = {}) {
   const to = normalizePhone(reservation.clientPhone);
   const hour = `${String(reservation.hour).padStart(2, "0")}:00`;
   const templateName = process.env.WHATSAPP_CANCEL_TEMPLATE_NAME;
+  // Las plantillas de Meta no admiten variables opcionales: todas las
+  // {{n}} declaradas al crear la plantilla tienen que llevar texto en
+  // cada envío. Si el admin no cargó motivo, se manda este valor fijo en
+  // su lugar en vez de mandar una línea vacía (Meta la rechaza).
+  const reasonText = reason?.trim() || "Sin motivo especificado";
 
   const payload = templateName
     ? {
         type: "template",
         template: {
           name: templateName,
-          language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "es_AR" },
+          language: {
+            // Esta plantilla en particular la aprobaste como "Español" a
+            // secas (código `es`), no `es_AR` como las otras dos — Meta
+            // identifica la plantilla por nombre + idioma exactos, así que
+            // si no coinciden la rechaza. Por eso tiene su propia variable
+            // en vez de compartir WHATSAPP_TEMPLATE_LANG con confirmación
+            // y modificación.
+            code: process.env.WHATSAPP_CANCEL_TEMPLATE_LANG || process.env.WHATSAPP_TEMPLATE_LANG || "es_AR",
+          },
           components: [
             {
               type: "body",
@@ -134,6 +147,7 @@ export async function sendWhatsAppCancellation(reservation, { reason } = {}) {
                 { type: "text", text: reservation.courtName },
                 { type: "text", text: reservation.date },
                 { type: "text", text: hour },
+                { type: "text", text: reasonText },
               ],
             },
           ],
@@ -145,7 +159,7 @@ export async function sendWhatsAppCancellation(reservation, { reason } = {}) {
           body:
             `Turno cancelado ❌\n` +
             `${reservation.courtName}, ${reservation.date} a las ${hour}.\n` +
-            (reason ? `Motivo: ${reason}\n` : "") +
+            (reason?.trim() ? `Motivo: ${reason.trim()}\n` : "") +
             `Cualquier duda, escribinos por acá.`,
         },
       };
@@ -179,6 +193,17 @@ export async function sendWhatsAppModification(reservation, previous) {
                 { type: "text", text: newHour },
               ],
             },
+            // Mismo botón dinámico que en la confirmación: lleva a
+            // /reserva/{id} (el id de la reserva no cambia al modificarla),
+            // que ahora muestra el horario nuevo y deja actualizar el
+            // calendario. Requiere que la plantilla tenga el botón
+            // configurado igual que la de confirmación (ver README).
+            {
+              type: "button",
+              sub_type: "url",
+              index: "0",
+              parameters: [{ type: "text", text: reservation.id }],
+            },
           ],
         },
       }
@@ -188,9 +213,8 @@ export async function sendWhatsAppModification(reservation, previous) {
           body:
             `Tu turno cambió 🔄\n` +
             `Antes: ${previous.courtName}, ${previous.date} a las ${prevHour}.\n` +
-            `Ahora: ${reservation.courtName}, ${reservation.date} a las ${newHour}.\n` +
-            `Te esperamos, 10 minutos antes de tu nuevo turno. \n` +
-            `Cualquier duda, escribinos por acá.`,
+            `Ahora: ${reservation.courtName}, ${reservation.date} a las ${newHour}.\n\n` +
+            `Actualizá tu calendario: ${process.env.FRONTEND_URL}/reserva/${reservation.id}`,
         },
       };
 

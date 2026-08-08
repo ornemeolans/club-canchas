@@ -350,6 +350,12 @@ export function cancelReservation(id) {
 // si salió bien, o { error } si no: "not_found", "invalid_court" (cancha
 // inexistente), "past" (el nuevo horario ya pasó o falta menos del margen
 // mínimo) u "taken" (el nuevo horario ya está ocupado por otra cosa).
+//
+// `updateCount` viaja en la reserva y se manda como SEQUENCE del archivo
+// .ics (ver App.jsx) — así, si el cliente ya había agregado el turno a un
+// calendario que respeta ese estándar (Outlook, Apple Calendar), al
+// descargar el .ics de nuevo se lo ofrece como "actualizar evento" en vez
+// de crear uno duplicado. Google Calendar web no siempre respeta esto.
 export function updateReservation(id, { courtId, date, hour } = {}) {
   const idx = reservations.findIndex((r) => r.id === id);
   if (idx === -1) return { error: "not_found" };
@@ -387,6 +393,7 @@ export function updateReservation(id, { courtId, date, hour } = {}) {
   current.hour = nextHour;
   current.amount = found.sport.price;
   current.updatedAt = new Date().toISOString();
+  current.updateCount = (current.updateCount || 0) + 1;
 
   return { reservation: current, previous };
 }

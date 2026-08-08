@@ -91,6 +91,67 @@ mientras probás.
      propio número dentro de la ventana de 24hs (mandándole primero un
      mensaje vos al número de prueba desde tu WhatsApp).
 
+### Plantillas para cancelación y modificación (panel de admin)
+
+Cuando cancelás o modificás una reserva desde `/admin`, el backend manda un
+WhatsApp igual que con la confirmación — y tiene el mismo límite: sin
+plantilla aprobada, sólo entrega dentro de la ventana de 24hs desde que el
+cliente le escribió al club. Para que llegue siempre, hace falta crear (y
+esperar que apruebe) una plantilla para cada caso, igual que hiciste con la
+de confirmación:
+
+**Cancelación** — creá una plantilla nueva, categoría **Utilidad**, con este
+cuerpo (4 variables, mismo orden que abajo):
+```
+Turno cancelado ❌
+{{1}}, {{2}} a las {{3}}.
+Motivo: {{4}}
+Cualquier duda, escribinos por acá.
+```
+El código manda, en ese orden: cancha, fecha, horario, motivo. Poné el
+nombre que le pusiste en `WHATSAPP_CANCEL_TEMPLATE_NAME`. Si la aprobaste
+con un idioma distinto al de las otras dos plantillas (por ejemplo
+"Español" a secas — código `es` — en vez de "Español (ARG)" —
+`es_AR`), completá también `WHATSAPP_CANCEL_TEMPLATE_LANG` con ese código;
+si no, dejala vacía y va a usar el mismo `WHATSAPP_TEMPLATE_LANG` de
+siempre. Esto importa porque Meta identifica una plantilla por su nombre
+**y** su idioma juntos — si no coinciden exacto, la rechaza.
+
+> Sobre el motivo (opcional en el panel): Meta no admite variables
+> opcionales en una plantilla aprobada — `{{4}}` tiene que llevar texto
+> siempre. Si el admin no cargó nada al cancelar, el código manda
+> automáticamente "Sin motivo especificado" en su lugar, así el mensaje
+> queda completo igual. Al cliente le va a llegar esa línea siempre,
+> tenga o no motivo cargado.
+
+**Modificación** — otra plantilla, categoría **Utilidad**, con este cuerpo
+(6 variables):
+```
+Tu turno cambió 🔄
+Antes: {{1}}, {{2}} a las {{3}}.
+Ahora: {{4}}, {{5}} a las {{6}}.
+Cualquier duda, escribinos por acá.
+```
+El código manda, en ese orden: cancha anterior, fecha anterior, horario
+anterior, cancha nueva, fecha nueva, horario nuevo. Poné el nombre en
+`WHATSAPP_MODIFY_TEMPLATE_NAME`.
+
+Igual que con la de confirmación, agregale un botón "Ir al sitio web" con
+URL **dinámica**, base `https://TU-FRONT/reserva/` — el código ya manda el
+id de la reserva (que no cambia al modificarla) como parte variable del
+botón. Al tocarlo, el cliente cae en la misma pantalla de siempre, que
+ahora va a mostrar el horario **nuevo** (se pide en vivo al backend) y le
+va a permitir bajar un `.ics` actualizado — si su calendario respeta el
+estándar (Outlook, Apple Calendar), lo va a ofrecer como "actualizar
+evento" en vez de crear uno duplicado. Con el link de Google Calendar en
+cambio no hay forma de "actualizar" un evento ya agregado — siempre crea
+uno nuevo, así que si el cliente ya lo había agregado por ese lado, le
+queda avisado en la misma pantalla que tiene que borrar el viejo a mano.
+
+En los dos casos, el idioma es el mismo `WHATSAPP_TEMPLATE_LANG` que ya
+tenés configurado (por defecto `es_AR`) — no hace falta uno nuevo por
+plantilla.
+
 ## 4. Google Sheets (la planilla de turnos)
 
 1. Creá un proyecto en [Google Cloud Console](https://console.cloud.google.com/),
