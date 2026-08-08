@@ -121,3 +121,34 @@
   color: #25200a;
   border-color: var(--flood);
 }
+
+.admin-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-sheet-table-wrap {
+  background: var(--field-deep);
+  border: 1px solid rgba(243, 239, 226, 0.1);
+  border-radius: 12px;
+  padding: 6px 16px;
+  overflow-x: auto;
+}
+.admin-sheet-table-wrap table {
+  min-width: 640px;
+}
+.admin-sheet-table-wrap thead th:first-child,
+.admin-sheet-table-wrap tbody td:first-child {
+  color: var(--chalk-dim);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+}

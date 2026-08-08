@@ -51,4 +51,5 @@ export const adminApi = {
       headers: { "x-admin-token": token },
       body: JSON.stringify(payload),
     }),
+  getSheet: (token) => request("/admin/sheet", { headers: { "x-admin-token": token } }),
 };

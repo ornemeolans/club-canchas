@@ -19,7 +19,7 @@ import {
 } from "./store.js";
 import { createPaymentPreference, getPayment, searchApprovedPaymentByReference, isValidWebhookSignature } from "./mercadopago.js";
 import { sendWhatsAppConfirmation, sendWhatsAppCancellation, sendWhatsAppModification } from "./whatsapp.js";
-import { appendReservationRow } from "./sheets.js";
+import { appendReservationRow, readSheetRows, sheetUrl } from "./sheets.js";
 import { checkSeries } from "./alerts.js";
 
 // Confirma una reserva a partir de un pago aprobado, y dispara todo lo que
@@ -196,6 +196,24 @@ router.post("/holds/:id/verify", async (req, res) => {
 // (La "planilla" de verdad, para el día a día, es el Google Sheet privado.)
 router.get("/reservations", requireAdmin, (_req, res) => {
   res.json({ reservations: listReservations() });
+});
+
+// La planilla de Google Sheets, para mostrarla dentro del panel de admin
+// (sólo lectura acá — para editar algo puntual que el panel no cubre, se
+// usa la URL de `sheetUrl`, que también viaja en la respuesta).
+router.get("/admin/sheet", requireAdmin, async (_req, res) => {
+  try {
+    const result = await readSheetRows();
+    if (result.skipped) {
+      return res
+        .status(503)
+        .json({ error: "La planilla no está configurada (falta GOOGLE_SHEET_ID o la cuenta de servicio)." });
+    }
+    res.json({ header: result.header, rows: result.rows, sheetUrl: sheetUrl() });
+  } catch (err) {
+    console.error("[sheets] Error leyendo la planilla:", err);
+    res.status(502).json({ error: "No se pudo leer la planilla de Google Sheets." });
+  }
 });
 
 // Una reserva confirmada puntual (usado por el front al volver del checkout).

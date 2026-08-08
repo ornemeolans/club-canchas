@@ -77,3 +77,31 @@ export async function appendReservationRow(reservation) {
     requestBody: { values: [row] },
   });
 }
+
+// Trae la planilla tal cual está en Google Sheets, para mostrarla dentro
+// del panel de admin (misma cuenta de servicio y mismo scope que ya se
+// usa para escribir, así que no hace falta nada nuevo del lado de Google).
+// Devuelve { header, rows } — `header` es la primera fila (encabezados),
+// `rows` el resto. Si falta la config, { skipped: true } (mismo criterio
+// que appendReservationRow) para que la ruta lo distinga de un error real.
+export async function readSheetRows() {
+  const sheetId = process.env.GOOGLE_SHEET_ID;
+  const sheets = await getSheetsClient();
+  if (!sheets || !sheetId) return { skipped: true };
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: "Turnos!A:J",
+  });
+  const values = res.data.values || [];
+  const [header, ...rows] = values;
+  return { header: header || [], rows };
+}
+
+// URL para abrir la planilla real en Google Sheets (para editar algo que el
+// panel no cubre). No hace falta llamada a la API para esto, es sólo la URL
+// estándar de Sheets con el ID.
+export function sheetUrl() {
+  const sheetId = process.env.GOOGLE_SHEET_ID;
+  return sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : null;
+}

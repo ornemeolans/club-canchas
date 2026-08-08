@@ -116,6 +116,11 @@ export default function Admin() {
   const [bulkResult, setBulkResult] = useState(null);
   const [bulkError, setBulkError] = useState(null);
 
+  const [view, setView] = useState("calendar"); // "calendar" | "sheet"
+  const [sheetData, setSheetData] = useState(null); // { header, rows, sheetUrl }
+  const [sheetLoading, setSheetLoading] = useState(false);
+  const [sheetError, setSheetError] = useState(null);
+
   const loadSchedule = useCallback(() => {
     if (!token) return;
     setLoading(true);
@@ -138,6 +143,21 @@ export default function Admin() {
   useEffect(() => {
     loadSchedule();
   }, [loadSchedule]);
+
+  const loadSheet = useCallback(() => {
+    if (!token) return;
+    setSheetLoading(true);
+    setSheetError(null);
+    adminApi
+      .getSheet(token)
+      .then((r) => setSheetData(r))
+      .catch((err) => setSheetError(err.message))
+      .finally(() => setSheetLoading(false));
+  }, [token]);
+
+  useEffect(() => {
+    if (view === "sheet" && !sheetData) loadSheet();
+  }, [view, sheetData, loadSheet]);
 
   const submitToken = (e) => {
     e.preventDefault();
@@ -311,15 +331,29 @@ export default function Admin() {
             Tocá un horario disponible para bloquearlo (clases, mantenimiento), o uno bloqueado para volver a
             habilitarlo.
           </p>
-          <button className="btn btn-primary" onClick={openBulk} style={{ marginRight: 10 }}>
-            Bloquear varios turnos
-          </button>
+          <div className="admin-tabs" style={{ margin: "4px 0 14px" }}>
+            <button
+              className={`tab ${view === "calendar" ? "active futbol" : ""}`}
+              onClick={() => setView("calendar")}
+            >
+              Calendario
+            </button>
+            <button className={`tab ${view === "sheet" ? "active futbol" : ""}`} onClick={() => setView("sheet")}>
+              Planilla
+            </button>
+          </div>
+          {view === "calendar" && (
+            <button className="btn btn-primary" onClick={openBulk} style={{ marginRight: 10 }}>
+              Bloquear varios turnos
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={logout}>
             Salir
           </button>
         </div>
       </div>
 
+      {view === "calendar" && (
       <section>
         <div className="date-strip">
           {days.map((d, i) => {
@@ -400,6 +434,66 @@ export default function Admin() {
           </span>
         </div>
       </section>
+      )}
+
+      {view === "sheet" && (
+      <section>
+        <div className="admin-sheet-head">
+          <div>
+            <h3 className="display" style={{ fontSize: 24, margin: "0 0 4px" }}>
+              Planilla de turnos
+            </h3>
+            <p className="section-sub" style={{ margin: 0 }}>
+              Se lee directo de Google Sheets — es la misma planilla que se actualiza sola con cada pago.
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-ghost" onClick={loadSheet} disabled={sheetLoading}>
+              {sheetLoading ? "Actualizando…" : "Actualizar"}
+            </button>
+            {sheetData?.sheetUrl && (
+              <a href={sheetData.sheetUrl} target="_blank" rel="noreferrer" className="btn btn-outline">
+                Abrir en Google Sheets
+              </a>
+            )}
+          </div>
+        </div>
+
+        {sheetLoading && !sheetData && <p className="section-sub">Cargando planilla…</p>}
+        {sheetError && <p style={{ color: "var(--danger)" }}>{sheetError}</p>}
+
+        {sheetData && (
+          <div className="admin-sheet-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  {sheetData.header.map((h, i) => (
+                    <th key={i}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sheetData.rows.length === 0 && (
+                  <tr className="empty-row">
+                    <td colSpan={sheetData.header.length || 1}>Todavía no hay turnos cargados.</td>
+                  </tr>
+                )}
+                {sheetData.rows
+                  .slice()
+                  .reverse()
+                  .map((row, i) => (
+                    <tr key={i}>
+                      {sheetData.header.map((_, colIdx) => (
+                        <td key={colIdx}>{row[colIdx] ?? ""}</td>
+                      ))}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      )}
 
       {blockTarget && (
         <div className="hold-overlay" onClick={() => setBlockTarget(null)}>

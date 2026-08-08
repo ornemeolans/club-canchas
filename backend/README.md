@@ -173,18 +173,22 @@ plantilla.
 5. Copiá el ID de la planilla (la parte de la URL entre `/d/` y `/edit`) a
    `GOOGLE_SHEET_ID`.
 
-## Sobre la "planilla" visible en la página
+## La planilla dentro del panel de admin
 
-La página pública **no** muestra ningún listado de turnos ni datos de
-clientes — eso quedaría expuesto a cualquiera que entre al sitio. La
-planilla real es el Google Sheet privado del punto anterior, que sólo ve el
-dueño del club (y quien él invite desde Drive).
+Desde que `/admin` quedó atrás de la clave (`ADMIN_TOKEN`), ahí adentro
+también se puede ver la planilla — pestaña **"Planilla"** al lado de
+**"Calendario"**. Es de sólo lectura (trae los datos en vivo con
+`GET /api/admin/sheet`, usando la misma cuenta de servicio de Google que ya
+tenías configurada para escribir); para editar algo puntual que el panel no
+cubre, tiene un botón **"Abrir en Google Sheets"** que lleva directo a la
+planilla real. La página pública (sin login) sigue sin mostrar ningún
+listado de turnos ni datos de clientes — eso sólo vive detrás de la clave de
+admin.
 
 Además, `GET /api/reservations` (que devuelve el listado completo con
-nombres y teléfonos) está protegido con una clave simple — hay que mandarla
-en el header `x-admin-token` con el valor de `ADMIN_TOKEN` del `.env`. Es
-para que vos puedas consultarlo si alguna vez lo necesitás (por ejemplo con
-`curl`), no para que lo use la página.
+nombres y teléfonos) sigue protegido con la misma clave — hay que mandarla
+en el header `x-admin-token`. Es para que vos puedas consultarlo si alguna
+vez lo necesitás (por ejemplo con `curl`), no para que lo use la página.
 
 ## Horarios que ya pasaron
 
