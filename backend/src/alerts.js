@@ -4,7 +4,7 @@
 // fechas o libera el horario para volver a alquilarlo.
 
 import { listSeriesNeedingAlert, markSeriesAlerted, findCourt } from "./store.js";
-import { sendAdminAlert } from "./email.js";
+import { sendAdminAlert, renderBlockSeriesAlertHtml } from "./email.js";
 
 const CHECK_EVERY_MS = 60 * 60 * 1000; // cada 1 hora alcanza — no hace falta más seguido
 
@@ -14,6 +14,9 @@ export async function checkSeries() {
     const found = findCourt(series.courtId);
     const courtName = found?.court?.name || series.courtId;
     const subject = `Club Canchas — último turno bloqueado: ${courtName}`;
+    // `text` es el fallback en texto plano (clientes de mail viejos,
+    // preview de notificaciones, lectores de pantalla). `html` es la
+    // versión con estilo que ve la mayoría hoy en día.
     const text =
       `El bloqueo de "${series.reason || "sin motivo cargado"}" en ${courtName}, ` +
       `${String(series.hour).padStart(2, "0")}:00, llegó a su último turno bloqueado (${series.lastDate}).\n\n` +
@@ -21,8 +24,17 @@ export async function checkSeries() {
       `Entrá al panel de administrador para bloquear más fechas si la actividad ` +
       `continúa, o no hagas nada si ya se puede volver a alquilar ese horario ` +
       `a partir de ahora.`;
+    const adminUrl = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/admin` : null;
+    const html = renderBlockSeriesAlertHtml({
+      courtName,
+      reason: series.reason,
+      hour: series.hour,
+      lastDate: series.lastDate,
+      dates: series.dates,
+      adminUrl,
+    });
 
-    await sendAdminAlert(subject, text);
+    await sendAdminAlert(subject, text, html);
     markSeriesAlerted(series.id);
   }
   return pending.length;
